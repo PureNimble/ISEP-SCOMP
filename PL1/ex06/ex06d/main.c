@@ -9,12 +9,15 @@ int main() {
     pid_t listPids[4];
     for (i = 0; i < 4; i++){
         if ((listPids[i] = fork()) == 0) {
-            printf("Processo %i com PID %d terminou com sucesso.\n", i+1, getpid());
+            printf("Processo %d com PID '%d' terminou com sucesso.\n", i+1, getpid());
             exit(i+1);
         }
         if(listPids[i] % 2 == 0){
             printf("PID par(%d) em execução...\n", listPids[i]);
-			waitpid(listPids[i], &status, 0);
+            waitpid(listPids[i], &status, 0);
+            if(WIFEXITED(status)){
+                printf("Pid '%d'com retorno de %d.\n",listPids[i], WEXITSTATUS(status));
+            }
         }
     }
     printf ("This is the end.\n");

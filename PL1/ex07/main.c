@@ -19,10 +19,10 @@ int main(){
 
   /* initialize array with random numbers (rand(): stdlib.h) */
   for (i = 0; i < ARRAY_SIZE; i++)
-    numbers[i] = rand() % 1000;
+    numbers[i] = rand() % 10000;
 
   /* initialize n */
-  n = rand() % 1000;
+  n = rand() % 10000;
 
   pid = fork();
 

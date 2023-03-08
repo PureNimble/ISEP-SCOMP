@@ -7,16 +7,16 @@
 int main(void){
     
     int i, final, counter = -99;
-    pid_t pidsList[10];
+    pid_t pid;
 
     for (i = 0; i < 10; i++){
         counter+=100;
-        pidsList[i] = fork();
-        if(pidsList[i] < 0){
+        pid = fork();
+        if(pid < 0){
             perror("Erro ao criar o processo");
             exit(-1);
         }
-        if(pidsList[i] == 0){
+        if(pid == 0){
             final = counter + 100;
             for(i = counter; i < final; i++){
                 printf("%d\n", i);
@@ -24,9 +24,7 @@ int main(void){
             exit(0);
         }
     }
-   for(i = 0; i < 10; i++){
-        waitpid(pidsList[i], NULL, 0);
-    }
+    while(wait(NULL) > 0);
     printf ("Fim (processamento pai)\n");
     return 0;
 }

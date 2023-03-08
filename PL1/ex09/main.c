@@ -6,7 +6,7 @@
 
 int main(void){
     
-    int i, final, counter = -99;
+    int i, j, final, counter = -99;
     pid_t pid;
 
     for (i = 0; i < 10; i++){
@@ -18,8 +18,8 @@ int main(void){
         }
         if(pid == 0){
             final = counter + 100;
-            for(i = counter; i < final; i++){
-                printf("%d\n", i);
+            for(j = counter; j < final; j++){
+                printf("%d\n", j);
             }
             exit(0);
         }

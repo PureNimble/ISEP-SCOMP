@@ -30,3 +30,13 @@ int main(void){
     printf ("Fim (processamento pai)\n");
     return 0;
 }
+
+
+/*
+
+a)   
+     Q: Is the output sorted? Can you guarantee it will be always sorted? Why?
+     A: Não, nem é possível garantir uma apresentação ordenada, pois não existe forma de garantir que um processo executa antes de outro,
+        ou seja, a apresentação dos resultados é feita de forma aleatória.
+
+*/

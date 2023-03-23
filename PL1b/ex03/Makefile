@@ -4,8 +4,15 @@ main: main.o
 main.o: main.c
 	gcc -g -Wall -c main.c -o main.o
 
-clean:
-	rm -f *.o main
+main: signal.o
+	gcc -g -Wall signal.o -o signal
 
-run: main
-	./main
+signal.o: signal.c
+	gcc -g -Wall -c signal.c -o signal.o
+
+clean:
+	rm -f *.o main signal
+
+run: main signal
+	./main &
+	./signal

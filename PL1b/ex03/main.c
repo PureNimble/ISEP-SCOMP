@@ -1,13 +1,22 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <time.h>
-#include <sys/wait.h>
+#include <signal.h>
+#include <string.h>
+
+void handler(int signum) {
+  printf("Sinal recebido");
+}
 
 int main(void){
-      for( ; ; ){
-        printf("I love SCOMP !\n");
-        sleep(1);
-      }
+  struct sigaction act;
+  memset(&act, 0, sizeof(struct sigaction));
+  sigemptyset(&act.sa_mask);
+  act.sa_sigaction = handler;
+  sigaction(SIGUSR1, &act, NULL);
+  for( ; ; ){
+    printf("I love SCOMP ! O meu PID:%i Ataca-me\n", getpid());
+    sleep(2);
+  }
+  return 0;
 }

@@ -10,10 +10,12 @@ void handler(int signum) {
 
 int main(void){
   struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
+  act.sa_handler = handler;
   sigemptyset(&act.sa_mask);
-  act.sa_sigaction = handler;
-  sigaction(SIGUSR1, &act, NULL);
+  act.sa_flags = 0;
+  for (int i = 1; i <= NSIG; i++) {
+      sigaction(i, &act, NULL);
+  }
   for( ; ; ){
     printf("I love SCOMP ! O meu PID:%i Ataca-me\n", getpid());
     sleep(2);

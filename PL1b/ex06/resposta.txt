@@ -1,0 +1,9 @@
+6) Variáveis globais são variáveis que são declaradas fora de qualquer 
+   função e, portanto, podem ser acedidas por qualquer função dentro 
+   do arquivo em que são declaradas. Variáveis estáticas, por outro lado,
+   são variáveis que são declaradas com a palavra-chave static dentro de 
+   uma função e mantêm o seu valor entre chamadas de função. Sendo assim,
+   não é seguro usar este tipo de variáveis dentro de um handler de sinais,
+   pois os handlers executam de forma assincrona e podem interromper a 
+   execução de outras partes do programa, o que pode resultar num comportamento
+   inesperado quando variáveis globais ou estáticas forem acedidas ou modificadas.

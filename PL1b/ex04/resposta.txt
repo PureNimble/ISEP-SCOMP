@@ -1,0 +1,33 @@
+4)a) Após analisarmos o comportamento destas duas funções, podemos concluir que 
+     o sigaction é a melhor opção pelas seguintes razões:
+
+            -> a função signal() não impede (obrigatoriamente)
+               outros sinais de chegar enquanto o handler trata 
+               de um sinal, ao contrário do que acontece com a 
+               função sigaction() que bloqueia os outros sinais
+               até o handler retornar um valor;
+
+            -> o comportamento da função signal() varia dependendo
+               da versão do UNIX;
+
+            -> em termos gerais, a função sigaction() é muito mais
+               fiável do que a função signal().
+
+b) Função sigaction() e os seus parametros:
+
+            -> int sigaction(int sig, const struct sigaction * act, struct sigaction * oact);
+
+            -> sig: é usado para especificar o sinal para o qual a ação está sendo 
+                    definida ou recuperada
+
+            -> act: é um apontador para a estrutura sigaction que define os detalhes da
+                    ação para o sinal especificado por sig
+
+            -> oact: (se não for NULL) é usado para armazenar os detalhes da ação
+                     anteriormente definida.
+
+            -> Em suma, sigaction() é uma função usada para definir ou recuperar a ação 
+               associada a um sinal específico. O parâmetro act é usado para especificar 
+               a nova ação a ser associada ao sinal, enquanto o parâmetro oact é usado 
+               para recuperar a ação anteriormente definida. O parâmetro sig especifica 
+               o sinal para o qual a ação está sendo definida ou recuperada.

@@ -4,7 +4,7 @@ main: main.o
 main.o: main.c
 	gcc -g -Wall -c main.c -o main.o
 
-main: signal.o
+signal: signal.o
 	gcc -g -Wall signal.o -o signal
 
 signal.o: signal.c

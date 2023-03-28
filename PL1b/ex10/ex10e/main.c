@@ -22,9 +22,9 @@ int main(void){
   struct sigaction act;
 
   memset(&act, 0, sizeof(struct sigaction));
-  sigfillset(&act.sa_mask); 
+  sigemptyset(&act.sa_mask); 
   act.sa_sigaction = handle_USR1;
-  act.sa_flags = SA_SIGINFO;
+  act.sa_flags = SA_NODEFER;
   sigaction(SIGUSR1, &act, NULL);
 
   childPid = fork();
@@ -47,57 +47,28 @@ int main(void){
   }
   return 0;
 }
-
 /*
-  a)✅
-
-  b)
-    input:
-        kill -SIGUSR1 parentPid
-
-    output:
-        Im working!
-        Im working!
-        Im working!
-        SIGUSR1 signal captured: USR1 counter = 1
-        Im working!
-        Im working!
-  c)
+  e)
     output:
         ./main
         SIGUSR1 signal captured: USR1 counter = 1
-        Im working!
         SIGUSR1 signal captured: USR1 counter = 2
-        Im working!
         SIGUSR1 signal captured: USR1 counter = 3
-        Im working!
         SIGUSR1 signal captured: USR1 counter = 4
-        Im working!
         SIGUSR1 signal captured: USR1 counter = 5
-        Im working!
         SIGUSR1 signal captured: USR1 counter = 6
-        Im working!
         SIGUSR1 signal captured: USR1 counter = 7
-        Im working!
         SIGUSR1 signal captured: USR1 counter = 8
-        Im working!
         SIGUSR1 signal captured: USR1 counter = 9
-        Im working!
         SIGUSR1 signal captured: USR1 counter = 10
-        Im working!
         SIGUSR1 signal captured: USR1 counter = 11
-        Im working!
         SIGUSR1 signal captured: USR1 counter = 12
-        Im working!
         make: *** [Makefile:11: run] Interrupt
-    
-  d)
-    output:
-        ./main
-        SIGUSR1 signal captured: USR1 counter = 1
-        make: *** [Makefile:11: run] Interrupt
+
     A:
-      Uma vez que o handler leva mais de 1 segundo para ser executado e está a bloquear todos os sinais, incluindo o SIGUSR1, 
-      qualquer sinal que seja enviado enquanto o handler está em execução será bloqueado o que pode resultar em perda de sinais, 
-      ou seja, estes não serão entregues ao processo.
+        Neste caso, uma vez que nenhum sinal é bloqueado enquanto o handler está em execução, 
+        os seguintes sinais serão processados imediatamente, possivelmente de forma concorrente 
+        ou recursiva, podendo mesmo interromper o tratamento de sinais anteriores. Isto pode levar 
+        a uma contagem do USR1_counter incorreta em alguns casos, uma vez que o manipulador de sinais
+        pode ser interrompido e retomado em momentos diferentes.
 */

@@ -4,8 +4,15 @@ main: main.o
 main.o: main.c
 	gcc -g -Wall -c main.c -o main.o
 
-clean:
-	rm -f *.o main
+simulator: simulator.o
+	gcc -g -Wall simulator.o -o simulator
 
-run: main
-	./main
+simulator.o: simulator.c
+	gcc -g -Wall -c simulator.c -o simulator.o
+
+clean:
+	rm -f *.o main simulator
+
+run: main simulator
+	./main &
+	./simulator

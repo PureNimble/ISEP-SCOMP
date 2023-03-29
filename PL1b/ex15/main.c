@@ -40,7 +40,6 @@ int main(void){
     
     for(i = 0; i < 5; i++){
         cur_cmd = &cmds[i];
-        printf("Comando %s em execução\n", cur_cmd->cmd);
         alarm(cur_cmd->time_cap);
         sleep(10);
     }

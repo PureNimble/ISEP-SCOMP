@@ -4,7 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BUFFER_SIZE 50
+struct Message {
+    int num;
+    char str[50];
+};
+struct Message message;
 
 int main(void){
     pid_t pid;
@@ -19,25 +23,19 @@ int main(void){
       return -1;
     }
     if(pid == 0){
-        int readNum;
-        char readStr[BUFFER_SIZE];
         close(fd[1]);
-        read(fd[0], &readNum, sizeof(int));
-        read(fd[0], readStr, BUFFER_SIZE);
-        printf("Filho leu: %i & %s\n", readNum, readStr);
+        read(fd[0], &message, sizeof(message));
+        printf("Filho leu: %i & %s\n", message.num, message.str);
         close(fd[0]);
         exit(0);
     }
-    int sendNum;
-    char sendStr[BUFFER_SIZE];
     printf("Escreva um número: ");
-    scanf("%d", &sendNum);
+    scanf("%d", &message.num);
     printf("Escreva uma string: ");
-    scanf("%s", sendStr);
+    scanf("%s", message.str);
 
     close(fd[0]);
-    write(fd[1], &sendNum, sizeof(int));
-    write(fd[1], sendStr, BUFFER_SIZE);
+    write(fd[1], &message, sizeof(message));
     close(fd[1]);
 
     return 0;

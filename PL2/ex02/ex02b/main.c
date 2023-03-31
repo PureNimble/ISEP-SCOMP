@@ -20,7 +20,7 @@ int main(void){
     pid = fork();
     if(pid < 0){
       perror("Erro ao criar o processo");
-      return -1;
+      exit(-1);
     }
     if(pid == 0){
         close(fd[1]);

@@ -75,3 +75,20 @@ int main(void){
   printf("Total: %d\n", finalNum);
   return 0;
 }
+
+
+
+/*
+a)
+
+    Q: Explain why the there is no need for a synchronization mechanism? Take a look at the pipe function
+       complete man pages.
+
+    A: Não é necessário um mecanismo de sincronização, pois tal como diz no manual dos pipes, a função pipe() 
+       cria um canal de dados unidirecional, que garante que os dados escritos numa extremidade do canal são 
+       recebidos na mesma ordem na outra extremidade do canal. Ou seja, quando cada processo filho escreve a 
+       sua soma parcial no canal, os dados são escritos de maneira sequencial e ordenada, logo oprocesso pai 
+       lê os dados na mesma ordem, garantindo que recebe as somas parciais corretas de cada processo filho.
+
+
+*/

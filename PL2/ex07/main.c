@@ -22,7 +22,7 @@ void fillRandomArrays(int *vec1, int *vec2) {
 
 int main(void){
   pid_t pidList[NUMBER_OF_CHILDREN];
-  int fd[2], *vec1, *vec2, status, i;
+  int fd[NUMBER_OF_CHILDREN][2], *vec1, *vec2, status, i;
 
   vec1 = (int *) calloc(ARRAY_SIZE, sizeof(int));
   vec2 = (int *) calloc(ARRAY_SIZE, sizeof(int));
@@ -33,12 +33,12 @@ int main(void){
   }
 
   fillRandomArrays(vec1, vec2);
-
-  if(pipe(fd) == -1){
-    perror("Erro no Pipe");
-    return 1;
-  }
+  
   for(i = 0; i < NUMBER_OF_CHILDREN; i++){
+    if(pipe(fd[i]) == -1){
+      perror("Erro no Pipe");
+      return 1;
+    }
     pidList[i] = fork();
     if(pidList[i] < 0){
       perror("Erro ao criar o processo");
@@ -51,9 +51,9 @@ int main(void){
       for(j = min; j < max; j++){
         tmp += vec1[j] + vec2[j];
       }
-      close(fd[0]);
-      write(fd[1], &tmp, sizeof(tmp));
-      close(fd[1]);
+      close(fd[i][0]);
+      write(fd[i][1], &tmp, sizeof(tmp));
+      close(fd[i][1]);
       exit(0);
     }
   }
@@ -61,14 +61,11 @@ int main(void){
   int finalNum = 0;
   for (i = 0; i < NUMBER_OF_CHILDREN; i++) {
     waitpid(pidList[i], &status, 0);
-  }
-
-  close(fd[1]);
-  for(i = 0; i < NUMBER_OF_CHILDREN; i++) {
-    read(fd[0], &readInt, sizeof(readInt));
+    close(fd[i][1]);
+    read(fd[i][0], &readInt, sizeof(readInt));
     finalNum += readInt;
+    close(fd[i][0]);
   }
-  close(fd[0]);
 
   free(vec1);
   free(vec2);

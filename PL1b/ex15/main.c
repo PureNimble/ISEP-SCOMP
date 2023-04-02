@@ -19,13 +19,18 @@ void handler(int signo, siginfo_t *sinfo, void *context){
 }
 
 int main(void){
-    int i;
+    pid_t pid;
+    pid = fork();
+    if(pid == 0){
+        execv("./simulator", (char *[]){"cat filename1 filename2>file2&3", "ls -R", "mv file.txt /home", "cp scenery.jpg /home", "rm -r", NULL });
+        exit(-1);
+    }
+    int i, remainingTime;
     struct sigaction act;
     memset(&act, 0, sizeof(struct sigaction));
     sigemptyset(&act.sa_mask);
     act.sa_sigaction = handler;
     sigaction(SIGALRM, &act, NULL);
-
     command_t cmds[5];
     strcpy(cmds[0].cmd, "cat filename1 filename2>file2&3");
     cmds[0].time_cap = 5;
@@ -42,6 +47,10 @@ int main(void){
         cur_cmd = &cmds[i];
         alarm(cur_cmd->time_cap);
         sleep(10);
+        remainingTime = alarm(0);
+        if(remainingTime > 0){
+            sleep(remainingTime);
+        }
     }
     
     return 0;

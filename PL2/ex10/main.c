@@ -34,7 +34,7 @@ int main(void){
       randomNum = (rand() % 5) + 1;
       write(fdUp[1], &randomNum, sizeof(randomNum));
       read(fdDown[0], &credit, sizeof(credit));
-      printf("Credito disponivel: %d€\n", credit);
+      printf("Crédito disponivel: %d€\n", credit);
       read(fdDown[0], &able, sizeof(able));
     }
     close(fdUp[1]);

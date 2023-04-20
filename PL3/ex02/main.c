@@ -21,17 +21,18 @@ typedef struct {
 
 int main(void){
 
-    int fd, clear, status, i;
+    int fd, status, i;
     pid_t pid;
+    
     fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR);
-    if(fd == -1) {
+    if(fd < 0) {
 		perror("Erro ao criar memoria partilhada");
         exit(-1);
 	}
     ftruncate (fd, DATA_SIZE);
     sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 
-    shared_data -> firstValue = 1000;
+    shared_data -> firstValue = 10000;
     shared_data -> secondValue = 500;
     shared_data -> allowFather = 1;
     shared_data -> allowSon = 0;
@@ -49,17 +50,16 @@ int main(void){
             shared_data -> allowFather = 1;
         }
 
-        clear = munmap(shared_data, DATA_SIZE);
-        if(clear < 0){
+        if(munmap(shared_data, DATA_SIZE) < 0){
             perror("Erro ao remover mapping");
             exit(-1);
         }
 
-        clear = close(fd);
-        if(clear < 0){
+        if(close(fd) < 0){
             perror("Erro ao fechar file descriptor");
             exit(-1);
         }
+
         exit(0);
     }
     for(i = 0; i < NUMBER_OF_OPERATIONS; i++){
@@ -73,20 +73,17 @@ int main(void){
     waitpid(pid, &status, 0);
     printf("1º valor: %d\n2º valor: %d\n", shared_data -> firstValue, shared_data -> secondValue);
 
-    clear = munmap(shared_data, DATA_SIZE);
-    if(clear < 0){
+    if(munmap(shared_data, DATA_SIZE) < 0){
         perror("Erro ao remover mapping");
         exit(-1);
     }
 
-    clear = close(fd);
-    if(clear < 0){
+    if(close(fd) < 0){
         perror("Erro ao fechar file descriptor");
         exit(-1);
     }
 
-    clear = shm_unlink(FILE_NAME);
-    if (clear < 0) {
+    if (shm_unlink(FILE_NAME) < 0) {
         perror("Erro ao remover o Ficheiro!");
         exit(-1);
     }
@@ -101,7 +98,7 @@ Q: Will these results always be correct? Propose a solution that ensures data co
 A:
     Não, os resultados nem sempre estarão corretos, pois ambos os processos Pai e filho 
 (em execução concorrente) estão a tentar aceder e modificar os dados presentes na mesma 
-zona de memória partilhada sem nenhum tipo demecanismo de coordenação, o que pode levar 
+zona de memória partilhada sem nenhum tipo de mecanismo de coordenação, o que pode levar 
 a comportamentos e resultados inesperados.
 
     Uma solução possível que garante a consistencia dos dados é a sincronização por active wait (spinning)

@@ -10,9 +10,9 @@
 
 int main(void){
 
-    int fd, clear;
+    int fd;
     fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR);
-    if(fd == -1) {
+    if(fd < 0) {
 		perror("Erro ao criar memoria partilhada");
         exit(-1);
 	}
@@ -29,14 +29,12 @@ int main(void){
 	scanf("%s", shared_data -> studentAdress);
     shared_data -> canRead = 1;
 
-    clear = munmap(shared_data, DATA_SIZE);
-    if(clear < 0){
+    if(munmap(shared_data, DATA_SIZE) < 0){
         perror("Erro ao remover mapping");
         exit(-1);
     }
 
-    clear = close(fd);
-    if(clear < 0){
+    if(close(fd) < 0){
         perror("Erro ao fechar file descriptor");
         exit(-1);
     }

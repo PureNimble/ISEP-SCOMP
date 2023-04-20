@@ -11,8 +11,9 @@
 
 int main(void){
 
-    int fd, clear, *ptr, i;
+    int fd, *ptr, i;
     time_t t;
+
     fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR);
     if(fd == -1) {
 		perror("Erro ao criar memoria partilhada");
@@ -30,14 +31,12 @@ int main(void){
     }
     shared_data -> canRead = 1;
 
-    clear = munmap(shared_data, DATA_SIZE);
-    if(clear < 0){
+    if(munmap(shared_data, DATA_SIZE) < 0){
         perror("Erro ao remover mapping");
         exit(-1);
     }
 
-    clear = close(fd);
-    if(clear < 0){
+    if(close(fd) < 0){
         perror("Erro ao fechar file descriptor");
         exit(-1);
     }

@@ -10,34 +10,31 @@
 
 int main(void){
 
-    int fd, clear;
-    fd = shm_open(FILE_NAME, O_RDWR, S_IRUSR|S_IWUSR);
-    if(fd == -1) {
+    int fd;
+    fd = shm_open(FILE_NAME, O_RDONLY, S_IRUSR|S_IWUSR);
+    if(fd < 0) {
 		perror("Erro ao abrir memoria partilhada");
         exit (-1);
 	}
     ftruncate (fd, DATA_SIZE);
-    sharedStudent *shared_data = (sharedStudent*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    sharedStudent *shared_data = (sharedStudent*) mmap(NULL, DATA_SIZE, PROT_READ, MAP_SHARED, fd, 0);
 
     while (!shared_data -> canRead);
-    printf("%d\n", shared_data -> studentNum);
-    printf("%s\n", shared_data -> studentName);
-    printf("%s\n", shared_data -> studentAdress);
+    printf("Número do aluno: %d\n", shared_data -> studentNum);
+    printf("Nome do aluno: %s\n", shared_data -> studentName);
+    printf("Morada do aluno: %s\n", shared_data -> studentAdress);
 
-    clear = munmap(shared_data, DATA_SIZE);
-    if(clear < 0){
+    if(munmap(shared_data, DATA_SIZE) < 0){
         perror("Erro ao remover mapping");
         exit(-1);
     }
 
-    clear = close(fd);
-    if(clear < 0){
+    if(close(fd) < 0){
         perror("Erro ao fechar file descriptor");
         exit(-1);
     }
 
-    clear = shm_unlink(FILE_NAME);
-    if (clear < 0) {
+    if (shm_unlink(FILE_NAME) < 0) {
         perror("Erro ao remover o Ficheiro!");
         exit(-1);
     }

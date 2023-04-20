@@ -10,15 +10,16 @@
 
 int main(void){
 
-    int fd, clear, i, *ptr;
+    int fd, i, *ptr;
     float average = 0;
-    fd = shm_open(FILE_NAME, O_RDWR, S_IRUSR|S_IWUSR);
-    if(fd == -1) {
+
+    fd = shm_open(FILE_NAME, O_RDONLY, S_IRUSR|S_IWUSR);
+    if(fd < 0) {
 		perror("Erro ao abrir memoria partilhada");
         exit (-1);
 	}
     ftruncate (fd, DATA_SIZE);
-    sharedArray *shared_data = (sharedArray*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    sharedArray *shared_data = (sharedArray*) mmap(NULL, DATA_SIZE, PROT_READ, MAP_SHARED, fd, 0);
 
     while(!shared_data -> canRead);
     ptr = shared_data -> array;
@@ -30,20 +31,17 @@ int main(void){
 
     printf("Média: %.2f\n", average);
 
-    clear = munmap(shared_data, DATA_SIZE);
-    if(clear < 0){
+    if(munmap(shared_data, DATA_SIZE) < 0){
         perror("Erro ao remover mapping");
         exit(-1);
     }
 
-    clear = close(fd);
-    if(clear < 0){
+    if(close(fd) < 0){
         perror("Erro ao fechar file descriptor");
         exit(-1);
     }
 
-    clear = shm_unlink(FILE_NAME);
-    if (clear < 0) {
+    if (shm_unlink(FILE_NAME) < 0) {
         perror("Erro ao remover o Ficheiro!");
         exit(-1);
     }

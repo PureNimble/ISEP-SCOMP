@@ -14,5 +14,3 @@ clean:
 	rm -f *.o writer reader
 
 run: writer reader
-	./writer
-	./reader

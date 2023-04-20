@@ -1,5 +1,5 @@
 main: main.o
-	gcc -g -Wall main.o -o main
+	gcc -g -Wall main.o -o main -lrt
 	
 main.o: main.c
 	gcc -g -Wall -c main.c -o main.o

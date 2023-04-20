@@ -10,19 +10,25 @@
 
 int main(void){
 
-    int fd, clear;
+    int fd, clear, i, *ptr;
+    float average = 0;
     fd = shm_open(FILE_NAME, O_RDWR, S_IRUSR|S_IWUSR);
     if(fd == -1) {
 		perror("Erro ao abrir memoria partilhada");
         exit (-1);
 	}
     ftruncate (fd, DATA_SIZE);
-    sharedStudent *shared_data = (sharedStudent*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    sharedArray *shared_data = (sharedArray*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 
-    while (!shared_data -> canRead);
-    printf("%d\n", shared_data -> studentNum);
-    printf("%s\n", shared_data -> studentName);
-    printf("%s\n", shared_data -> studentAdress);
+    while(!shared_data -> canRead);
+    ptr = shared_data -> array;
+    for(i = 0; i < ARRAY_SIZE; i++){
+        average += *ptr;
+        ptr++;
+    }
+    average /= ARRAY_SIZE;
+
+    printf("Média: %.2f\n", average);
 
     clear = munmap(shared_data, DATA_SIZE);
     if(clear < 0){

@@ -17,21 +17,26 @@ typedef struct {
 #define FILE_NAME "/shmEx05"
 #define NUMBER_OF_OPERATIONS 1000000
 
+void handler(int signo, siginfo_t *sinfo, void *context){
+    write(STDOUT_FILENO, "Catch USR1!\n", 13);
+}
+
 int main(void){
 
     int fd, status, i;
     pid_t childPid;
-
-    struct sigaction act;
-    memset(&act, 0, sizeof(struct sigaction));
-    sigemptyset(&act.sa_mask);
 
     fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR);
     if(fd < 0) {
 		perror("Erro ao criar memoria partilhada");
         exit(-1);
 	}
-    ftruncate (fd, DATA_SIZE);
+
+    if (ftruncate (fd, DATA_SIZE) < 0) {
+        perror("Erro ao alocar espaço na memória");
+        exit(-1);
+    }
+    
     sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 
     shared_data -> value = 100;
@@ -41,12 +46,15 @@ int main(void){
         perror("Erro ao criar o processo");
         exit(-1);
     }else if(childPid == 0){
-        pid_t parentPid = getppid();
+        struct sigaction act;
+        memset(&act, 0, sizeof(struct sigaction));
+        sigemptyset(&act.sa_mask);
+        act.sa_sigaction = handler;
+        sigaction(SIGUSR1, &act, NULL);
+        pause();
         for(i = 0; i < NUMBER_OF_OPERATIONS; i++){
-            pause();
             shared_data -> value++;
             shared_data -> value--;
-            kill(parentPid, SIGUSR1);
         }
 
         if(munmap(shared_data, DATA_SIZE) < 0){
@@ -64,12 +72,11 @@ int main(void){
     for(i = 0; i < NUMBER_OF_OPERATIONS; i++){
         shared_data -> value++;
         shared_data -> value--;
-        kill(childPid, SIGUSR1);
-        pause();
     }
+    kill(childPid, SIGUSR1);
 
     waitpid(childPid, &status, 0);
-    printf("valor final: %d\n", shared_data -> value);
+    printf("Valor final: %d\n", shared_data -> value);
 
     if(munmap(shared_data, DATA_SIZE) < 0){
         perror("Erro ao remover mapping");

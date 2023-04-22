@@ -1,0 +1,1 @@
+Neste exercício de SCOMP poderia ser neccessário apenas a creação de apenas 5 processos, assim eram menos ficheiros para escrever SCOMP :)

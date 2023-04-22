@@ -29,7 +29,12 @@ int main(void){
 		perror("Erro ao criar memoria partilhada");
         exit(-1);
 	}
-    ftruncate (fd, DATA_SIZE);
+
+    if (ftruncate (fd, DATA_SIZE) < 0) {
+        perror("Erro ao alocar espaço na memória");
+        exit(-1);
+    }
+    
     sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 
     shared_data -> firstValue = 10000;

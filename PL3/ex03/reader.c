@@ -18,7 +18,12 @@ int main(void){
 		perror("Erro ao abrir memoria partilhada");
         exit (-1);
 	}
-    ftruncate (fd, DATA_SIZE);
+
+    if (ftruncate (fd, DATA_SIZE) < 0) {
+        perror("Erro ao alocar espaço na memória");
+        exit(-1);
+    }
+    
     sharedArray *shared_data = (sharedArray*) mmap(NULL, DATA_SIZE, PROT_READ, MAP_SHARED, fd, 0);
 
     while(!shared_data -> canRead);

@@ -7,31 +7,24 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/wait.h>
-#include <signal.h>
+
+#define BUFFER_SIZE 10
 
 typedef struct {
-    int value;
+    int buffer[BUFFER_SIZE];
+    int allowFather;
+    int allowSon;
 } sharedValues;
 
 #define DATA_SIZE sizeof(sharedValues)
-#define FILE_NAME "/shmEx05"
-#define NUMBER_OF_OPERATIONS 1000000
-
-void handler(int signo, siginfo_t *sinfo, void *context){
-    write(STDOUT_FILENO, "Catch USR1!\n", 13);
-}
+#define FILE_NAME "/shmEx09"
+#define NUMBER_OF_OPERATIONS 30
 
 int main(void){
 
     int fd, status, i;
-    pid_t childPid, parentPid = getpid();
-
-    struct sigaction act;
-    memset(&act, 0, sizeof(struct sigaction));
-    sigemptyset(&act.sa_mask);
-    act.sa_sigaction = handler;
-    sigaction(SIGUSR1, &act, NULL);
-
+    pid_t pid;
+    
     fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR);
     if(fd < 0) {
 		perror("Erro ao criar memoria partilhada");
@@ -45,20 +38,23 @@ int main(void){
     
     sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 
-    shared_data -> value = 100;
+    shared_data -> allowFather = 1;
+    shared_data -> allowSon = 0;
 
-    childPid = fork();
-    if(childPid < 0){
+    pid = fork();
+    if(pid < 0){
         perror("Erro ao criar o processo");
         exit(-1);
-    }else if(childPid == 0){
-        childPid = getpid();
+    }else if(pid == 0){
+        int read = 0;
         for(i = 0; i < NUMBER_OF_OPERATIONS; i++){
-            pause();
-            printf("Child executing (pid: %d)\n", childPid);
-            shared_data -> value++;
-            shared_data -> value--;
-            kill(parentPid, SIGUSR1);
+            while(!shared_data -> allowSon);
+            shared_data -> allowSon = 0;
+            if(read >= BUFFER_SIZE){
+                read = 0;
+            }
+            printf("O valor lido pelo processo filho foi: %d\n", shared_data -> buffer[read]);
+            shared_data -> allowFather = 1;
         }
 
         if(munmap(shared_data, DATA_SIZE) < 0){
@@ -73,16 +69,18 @@ int main(void){
 
         exit(0);
     }
-    sleep(1);
+    int write = 0;
     for(i = 0; i < NUMBER_OF_OPERATIONS; i++){
-        shared_data -> value++;
-        shared_data -> value--;
-        printf("Parent executing (pid: %d)\n", parentPid);
-        kill(childPid, SIGUSR1);
-        pause();
+        while(!shared_data -> allowFather);
+        shared_data -> allowFather = 0;
+        if(write >= BUFFER_SIZE){
+            write = 0;
+        }
+        shared_data -> buffer[write] = i+1;
+        shared_data -> allowSon = 1;
     }
-    waitpid(childPid, &status, 0);
-    printf("Valor final: %d\n", shared_data -> value);
+
+    waitpid(pid, &status, 0);
 
     if(munmap(shared_data, DATA_SIZE) < 0){
         perror("Erro ao remover mapping");

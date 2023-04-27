@@ -16,11 +16,6 @@ int main(void){
 		perror("Erro ao abrir memoria partilhada");
         exit (-1);
 	}
-
-    if (ftruncate (fd, DATA_SIZE) < 0) {
-        perror("Erro ao alocar espaço na memória");
-        exit(-1);
-    }
     
     sharedStudent *shared_data = (sharedStudent*) mmap(NULL, DATA_SIZE, PROT_READ, MAP_SHARED, fd, 0);
 

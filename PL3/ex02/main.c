@@ -7,12 +7,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <stdbool.h>
 
 typedef struct {
     int firstValue;
     int secondValue;
-    int allowFather;
-    int allowSon;
+    int turn;
+    bool flag[2];
 } sharedValues;
 
 #define DATA_SIZE sizeof(sharedValues)
@@ -39,8 +40,9 @@ int main(void){
 
     shared_data -> firstValue = 10000;
     shared_data -> secondValue = 500;
-    shared_data -> allowFather = 1;
-    shared_data -> allowSon = 0;
+    shared_data -> turn = 0;
+    shared_data -> flag[0] = false;
+    shared_data -> flag[1] = false;
 
     pid = fork();
     if(pid < 0){
@@ -48,11 +50,12 @@ int main(void){
         exit(-1);
     }else if(pid == 0){
         for(i = 0; i < NUMBER_OF_OPERATIONS; i++){
-            while(!shared_data -> allowSon);
-            shared_data -> allowSon = 0;
+            shared_data -> flag[1] = true;
+            shared_data -> turn = 0;
+            while (shared_data -> flag[0] && shared_data -> turn == 0);
             shared_data -> firstValue++;
             shared_data -> secondValue--;
-            shared_data -> allowFather = 1;
+            shared_data -> flag[1] = false;
         }
 
         if(munmap(shared_data, DATA_SIZE) < 0){
@@ -68,11 +71,12 @@ int main(void){
         exit(0);
     }
     for(i = 0; i < NUMBER_OF_OPERATIONS; i++){
-        while(!shared_data -> allowFather);
-        shared_data -> allowFather = 0;
+        shared_data -> flag[0] = true;
+        shared_data -> turn = 1;
+        while(shared_data -> flag[1] && shared_data -> turn == 1);
         shared_data -> firstValue--;
         shared_data -> secondValue++;
-        shared_data -> allowSon = 1;
+        shared_data -> flag[0] = false;
     }
 
     waitpid(pid, &status, 0);

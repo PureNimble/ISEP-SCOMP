@@ -8,13 +8,15 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <stdbool.h>
 
 #define LOCALMAX_SIZE 10
 #define ARRAYTOSEARCH_SIZE 1000
 
 typedef struct {
     int localMax[LOCALMAX_SIZE];
-    int allowed;
+    int number[LOCALMAX_SIZE];
+    bool choosing[LOCALMAX_SIZE];
 } sharedValues;
 
 #define DATA_SIZE sizeof(sharedValues)
@@ -28,6 +30,25 @@ void fillRandomArrays(int *arrayToSearch) {
     for (i = 0; i < ARRAYTOSEARCH_SIZE; i++){
         *arrayToSearch = (rand() % 1000) + 1;
         arrayToSearch++;
+    }
+}
+
+void bakeryAlgorithm(int id, sharedValues *shared_data) {
+    int i;
+    shared_data -> choosing[id] = true;
+    int max_number = 0;
+    for (i = 0; i < LOCALMAX_SIZE; i++) {
+        if (shared_data -> number[i] > max_number) {
+            max_number = shared_data -> number[i];
+        }
+    }
+    shared_data -> number[id] = max_number + 1;
+    shared_data -> choosing[id] = false;
+    for (i = 0; i < LOCALMAX_SIZE; i++) {
+        if (i != id) {
+            while (shared_data -> choosing[i]);
+            while (shared_data -> number[i] != 0 && ((shared_data -> number[i] < shared_data -> number[id]) || (shared_data -> number[i] == shared_data -> number[id] && i < id)));
+        }
     }
 }
 
@@ -79,7 +100,12 @@ int main(void){
     }
     
     sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-    shared_data -> allowed = 1;
+    
+    for (i = 0; i < LOCALMAX_SIZE; i++) {
+        shared_data -> choosing[i] = false;
+        shared_data -> number[i] = 0;
+    }
+
     for(i = 0; i < LOCALMAX_SIZE; i++){
         pidList[i] = fork();
         if(pidList[i] < 0){
@@ -88,11 +114,10 @@ int main(void){
         }else if(pidList[i] == 0){
             max = searchLocalMax(arrayToSearch, i);
             
-            while(!shared_data -> allowed);
-            shared_data -> allowed = 0;
+            bakeryAlgorithm(i, shared_data);
             shared_data -> localMax[i] = max;
             printf("Maior número encontrado pelo %dº filho: %d\n", i + 1, max);
-            shared_data -> allowed = 1;
+            shared_data -> number[i] = 0;
 
             if(munmap(shared_data, DATA_SIZE) < 0){
                 perror("Erro ao remover mapping");

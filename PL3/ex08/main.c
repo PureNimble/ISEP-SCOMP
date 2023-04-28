@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <stdbool.h>
 
 #define NUMBER_OF_CHILDREN 10
 #define WORD_MAX_LENGHT 20
@@ -17,11 +18,31 @@ typedef struct {
     char word[WORD_MAX_LENGHT];
     int occurences[NUMBER_OF_CHILDREN];
     int allowReading;
-    int allowWritting;
+    int number[NUMBER_OF_CHILDREN];
+    bool choosing[NUMBER_OF_CHILDREN];
 } sharedValues;
 
 #define DATA_SIZE sizeof(sharedValues)
 #define FILE_NAME "/shmEx08"
+
+void bakeryAlgorithm(int id, sharedValues *shared_data) {
+    int i;
+    shared_data -> choosing[id] = true;
+    int max_number = 0;
+    for (i = 0; i < NUMBER_OF_CHILDREN; i++) {
+        if (shared_data -> number[i] > max_number) {
+            max_number = shared_data -> number[i];
+        }
+    }
+    shared_data -> number[id] = max_number + 1;
+    shared_data -> choosing[id] = false;
+    for (i = 0; i < NUMBER_OF_CHILDREN; i++) {
+        if (i != id) {
+            while (shared_data -> choosing[i]);
+            while (shared_data -> number[i] != 0 && ((shared_data -> number[i] < shared_data -> number[id]) || (shared_data -> number[i] == shared_data -> number[id] && i < id)));
+        }
+    }
+}
 
 int main(void){
 
@@ -41,6 +62,11 @@ int main(void){
     
     sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
     shared_data -> allowReading = 0;
+    for (i = 0; i < NUMBER_OF_CHILDREN; i++) {
+        shared_data -> choosing[i] = false;
+        shared_data -> number[i] = 0;
+    }
+    
     for(i = 0; i < NUMBER_OF_CHILDREN; i++){
         pidList[i] = fork();
         if(pidList[i] < 0){
@@ -67,10 +93,9 @@ int main(void){
             }
             
             fclose(file);
-            while(!shared_data -> allowWritting);
-            shared_data -> allowWritting = 0;
+            bakeryAlgorithm(i, shared_data);
             shared_data -> occurences[i] = wordFound;
-            shared_data -> allowWritting = 1;
+            shared_data -> number[i] = 0;
 
             if(munmap(shared_data, DATA_SIZE) < 0){
                 perror("Erro ao remover mapping");
@@ -88,7 +113,6 @@ int main(void){
         sprintf(shared_data->filePath[i], "FilesToSearch/searchforchild%d.txt", i + 1);
     }
     strcpy(shared_data->word, "SCOMP");
-    shared_data -> allowWritting = 1;
     shared_data -> allowReading = 1;
 
     for (i = 0; i < NUMBER_OF_CHILDREN; i++) {

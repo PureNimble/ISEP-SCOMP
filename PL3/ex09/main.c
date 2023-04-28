@@ -12,8 +12,7 @@
 
 typedef struct {
     int buffer[BUFFER_SIZE];
-    int allowFather;
-    int allowSon;
+    volatile int counter;
 } sharedValues;
 
 #define DATA_SIZE sizeof(sharedValues)
@@ -38,23 +37,18 @@ int main(void){
     
     sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 
-    shared_data -> allowFather = 1;
-    shared_data -> allowSon = 0;
-
     pid = fork();
     if(pid < 0){
         perror("Erro ao criar o processo");
         exit(-1);
     }else if(pid == 0){
-        int read = 0;
+        int nextConsumed, out = 0;
         for(i = 0; i < NUMBER_OF_OPERATIONS; i++){
-            while(!shared_data -> allowSon);
-            shared_data -> allowSon = 0;
-            if(read >= BUFFER_SIZE){
-                read = 0;
-            }
-            printf("O valor lido pelo processo filho foi: %d\n", shared_data -> buffer[read]);
-            shared_data -> allowFather = 1;
+            while (shared_data -> counter == 0);
+            nextConsumed = shared_data -> buffer[out];
+            out = (out + 1) % BUFFER_SIZE;
+            shared_data -> counter--;
+            printf("O valor lido pelo processo filho foi: %d\n", nextConsumed);
         }
 
         if(munmap(shared_data, DATA_SIZE) < 0){
@@ -69,15 +63,13 @@ int main(void){
 
         exit(0);
     }
-    int write = 0;
+    int in = 0;
     for(i = 0; i < NUMBER_OF_OPERATIONS; i++){
-        while(!shared_data -> allowFather);
-        shared_data -> allowFather = 0;
-        if(write >= BUFFER_SIZE){
-            write = 0;
-        }
-        shared_data -> buffer[write] = i+1;
-        shared_data -> allowSon = 1;
+        while (shared_data -> counter == BUFFER_SIZE);
+        shared_data -> buffer[in] = i + 1;
+        in = (in + 1) % BUFFER_SIZE;
+        shared_data -> counter++;
+
     }
 
     waitpid(pid, &status, 0);

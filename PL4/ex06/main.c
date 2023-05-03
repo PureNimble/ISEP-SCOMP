@@ -7,24 +7,24 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/wait.h>
-
-#define BUFFER_SIZE 10
+#include <semaphore.h>
+#include <stdbool.h>
+#include <time.h>
 
 typedef struct {
-    int buffer[BUFFER_SIZE];
-    volatile int counter;
+    int diff;
 } sharedValues;
 
 #define DATA_SIZE sizeof(sharedValues)
-#define FILE_NAME "/shmEx10"
-#define NUMBER_OF_OPERATIONS 30
+#define FILE_NAME "/shmEx06"
 
 int main(void){
 
-    int fd, status, producer[2], consumer[2], i;
+    int fd, status;
     pid_t pid;
-    char allow;
-    
+    bool run = true;
+    sem_t *sem;
+
     fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR);
     if(fd < 0) {
 		perror("Erro ao criar memoria partilhada");
@@ -37,9 +37,11 @@ int main(void){
     }
     
     sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    shared_data -> diff = 0;
 
-    if (pipe(producer) < 0 || pipe(consumer) < 0) {
-        perror("Erro num dos pipes");
+    sem = sem_open("sema", O_CREAT | O_EXCL, 0644, 1);
+    if(sem == SEM_FAILED){
+        perror("Erro no criar/abrir semaforo");
         exit(-1);
     }
 
@@ -48,22 +50,20 @@ int main(void){
         perror("Erro ao criar o processo");
         exit(-1);
     }else if(pid == 0){
-        int nextConsumed, readIndex = 0;
-        for(i = 0; i < NUMBER_OF_OPERATIONS; i++){
-            if(shared_data -> counter == 0) {
-                close(producer[1]);
-                read(producer[0], &allow, sizeof(char));
-                close(producer[0]);
-            }
-            nextConsumed = shared_data -> buffer[readIndex];
-            readIndex = (readIndex + 1) % BUFFER_SIZE;
-            printf("O valor lido pelo processo filho foi: %d\n", nextConsumed);
-            shared_data -> counter--;
+        while(run){
+            if(shared_data -> diff > -2){
+                sem_wait(sem);
+                printf("C");
+                fflush(stdout);
+                shared_data -> diff--;
+                sem_post(sem);
+                usleep(500000);
+            }else run = false;
         }
 
         if(munmap(shared_data, DATA_SIZE) < 0){
-            perror("Erro ao remover mapping");
-            exit(-1);
+        perror("Erro ao remover mapping");
+        exit(-1);
         }
 
         if(close(fd) < 0){
@@ -73,22 +73,31 @@ int main(void){
 
         exit(0);
     }
-    int writeIndex = 0;
-    for(i = 0; i < NUMBER_OF_OPERATIONS; i++){ 
-        if(shared_data -> counter == BUFFER_SIZE){
-            close(consumer[1]);
-            read(consumer[0], &allow, sizeof(char));
-            close(consumer[0]);
-        } 
-        shared_data -> buffer[writeIndex] = i + 1;
-        writeIndex = (writeIndex + 1) % BUFFER_SIZE;
-        close(consumer[0]);
-        write(consumer[1], &allow, sizeof(char));
-        close(consumer[1]);
-        shared_data -> counter++;
+    time_t t;
+    int random;
+    while(run){
+        srand ((unsigned) time(&t));
+        random = (rand() % 2) + 1;
+        if(shared_data -> diff < 2){
+            sem_wait(sem);
+            printf("S");
+            fflush(stdout);
+            shared_data -> diff++;
+            sem_post(sem);
+            sleep(random);
+        }else run = false;
     }
-
     waitpid(pid, &status, 0);
+    printf("\n");
+
+    if(sem_close(sem) < 0){
+        perror("Erro ao fechar semaforo\n");
+        exit(-1);
+    }
+    if(sem_unlink("sema") < 0){
+        perror("Erro ao fechar semaforo\n");
+        exit(-1);
+    }
 
     if(munmap(shared_data, DATA_SIZE) < 0){
         perror("Erro ao remover mapping");

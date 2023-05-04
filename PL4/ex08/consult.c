@@ -22,26 +22,26 @@ int main(void){
     
     sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 
-    mutex1 = sem_open("mutex1", O_CREAT);
-    mutex2 = sem_open("mutex2", O_CREAT);
-    mutex3 = sem_open("mutex3", O_CREAT);
+    sem1 = sem_open("sem1", O_CREAT);
+    sem2 = sem_open("sem2", O_CREAT);
+    sem3 = sem_open("sem3", O_CREAT);
     semRead = sem_open("semaRead", O_CREAT);
     semWrite = sem_open("semaWrite", O_CREAT);
 
-    if(mutex1 == SEM_FAILED || mutex2 == SEM_FAILED || mutex3 == SEM_FAILED || semRead == SEM_FAILED || semWrite == SEM_FAILED){
+    if(sem1 == SEM_FAILED || sem2 == SEM_FAILED || sem3 == SEM_FAILED || semRead == SEM_FAILED || semWrite == SEM_FAILED){
         perror("Erro no criar/abrir semaforo");
         exit(-1);
     }
     
     do{
-        sem_wait(mutex3);
+        sem_wait(sem3);
         sem_wait(semRead);
-        sem_wait(mutex1);
+        sem_wait(sem1);
         shared_data -> readCount++;
         if(shared_data -> readCount == 1) sem_wait(semWrite);
-        sem_post(mutex1);
+        sem_post(sem1);
         sem_post(semRead);
-        sem_post(mutex3);
+        sem_post(sem3);
         
 
         printf("------Consult------\nNúmero: ");
@@ -65,10 +65,10 @@ int main(void){
         }
         found = 0;
 
-        sem_wait(mutex1);
+        sem_wait(sem1);
         shared_data -> readCount--;
         if (shared_data -> readCount == 0) sem_post(semWrite);
-        sem_post(mutex1);
+        sem_post(sem1);
         
         do{
             printf("Deseja procurar mais algum cliente?\n");
@@ -80,7 +80,7 @@ int main(void){
     shared_data -> run--;
 
     if(shared_data -> run == 0){
-        if(sem_close(mutex1) < 0 || sem_close(mutex2) < 0 || sem_close(mutex3) < 0 || sem_close(semRead) < 0 || sem_close(semWrite) < 0){
+        if(sem_close(sem1) < 0 || sem_close(sem2) < 0 || sem_close(sem3) < 0 || sem_close(semRead) < 0 || sem_close(semWrite) < 0){
             perror("Erro ao fechar semaforo\n");
             exit(-1);
         }
@@ -94,7 +94,7 @@ int main(void){
             perror("Erro ao fechar file descriptor");
             exit(-1);
         }
-        if(sem_unlink("mutex1") < 0 || sem_unlink("mutex2") < 0 || sem_unlink("mutex3") < 0 || sem_unlink("semaRead") < 0 || sem_unlink("semaWrite") < 0){
+        if(sem_unlink("sem1") < 0 || sem_unlink("sem2") < 0 || sem_unlink("sem3") < 0 || sem_unlink("semaRead") < 0 || sem_unlink("semaWrite") < 0){
             perror("Erro ao fechar semaforo\n");
             exit(-1);
         }

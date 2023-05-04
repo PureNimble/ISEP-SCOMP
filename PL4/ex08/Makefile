@@ -1,7 +1,7 @@
 all: insert.o consult.o consult_all.o
-	gcc -g -Wall insert.o -o insert -lpthread
-	gcc -g -Wall consult.o -o consult -lpthread
-	gcc -g -Wall consult_all.o -o consult_all -lpthread
+	gcc -g -Wall insert.o -o insert -lrt -lpthread
+	gcc -g -Wall consult.o -o consult -lrt -lpthread
+	gcc -g -Wall consult_all.o -o consult_all -lrt -lpthread
 	
 all.o: insert.c consult.c consult_all.c
 	gcc -g -Wall -c insert.c -o insert.o

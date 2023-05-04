@@ -18,7 +18,7 @@ typedef struct {
 } sharedValues;
 
 int fd;
-sem_t *mutex1, *mutex2, *mutex3, *semRead, *semWrite;
+sem_t *sem1, *sem2, *sem3, *semRead, *semWrite;
 #define DATA_SIZE sizeof(sharedValues)
 #define FILE_NAME "/shmEx08"
 

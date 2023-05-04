@@ -1,5 +1,5 @@
 main: main.o
-	gcc -g -Wall main.o -o main -lrt -lpthread
+	gcc -g -Wall main.o -o main -lpthread
 	
 main.o: main.c
 	gcc -g -Wall -c main.c -o main.o

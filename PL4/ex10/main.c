@@ -15,10 +15,9 @@
 #define NUMBER_OF_DOORS 3
 
 typedef struct {
-    int passengersNum;
-    int passengersId[MAX_PASSENGERS];
-    int doors[NUMBER_OF_DOORS];
-    int index;
+    int stationA;
+    int stationB;
+    int stationC;
 } train;
 
 #define DATA_SIZE sizeof(train)
@@ -29,7 +28,7 @@ int main(void){
     int fd, status, i;
     pid_t pidList[NUMBER_OF_CHILDREN];
     time_t t;
-    sem_t *semFull, *semEmpty, *sem3, *semDoor1, *semDoor2, *semDoor3;
+    sem_t *semTrain, *semDoor[NUMBER_OF_DOORS], *semSafe;
 
     fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR);
     if(fd < 0) {
@@ -43,64 +42,111 @@ int main(void){
     }
     
     train *shared_data = (train*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-    shared_data -> passengersNum = 0;
-    shared_data -> index = 0;
+    shared_data -> stationA = 0;
+    shared_data -> stationB = 0;
+    shared_data->stationC = 0;
 
-    semFull = sem_open("semaFull", O_CREAT /*| O_EXCL*/, 0644, 0);
-    semEmpty = sem_open("semaEmpty", O_CREAT /*| O_EXCL*/, 0644, 20);
-    sem3 = sem_open("sema3", O_CREAT /*| O_EXCL*/, 0644, 1);
-    semDoor1 = sem_open("semDoor1", O_CREAT /*| O_EXCL*/, 0644, 1);
-    semDoor2 = sem_open("semDoor2", O_CREAT /*| O_EXCL*/, 0644, 1);
-    semDoor3 = sem_open("semDoor3", O_CREAT /*| O_EXCL*/, 0644, 1);
-    if(semFull == SEM_FAILED || semEmpty == SEM_FAILED || sem3 == SEM_FAILED){
+    semTrain = sem_open("semaTrain", O_CREAT /*| O_EXCL*/, 0644, 20);
+    semSafe = sem_open("semaSafe", O_CREAT /*| O_EXCL*/, 0644, 1);
+    semDoor[0] = sem_open("semaDoor1", O_CREAT /*| O_EXCL*/, 0644, 1);
+    semDoor[1] = sem_open("semaDoor2", O_CREAT /*| O_EXCL*/, 0644, 1);
+    semDoor[2] = sem_open("semaDoor3", O_CREAT /*| O_EXCL*/, 0644, 1);
+
+    if(semTrain == SEM_FAILED || semDoor[0] == SEM_FAILED || semDoor[1] == SEM_FAILED || semDoor[2] == SEM_FAILED || semSafe == SEM_FAILED){
         perror("Erro no criar/abrir semaforo");
         exit(-1);
     }
     printf("Metro parte em direção á estação A com os passageiros...\n");
+    fflush(stdout);
     sleep(5);
+
     for(i = 0; i < NUMBER_OF_CHILDREN; i++){
         pidList[i] = fork();
         if(pidList[i] < 0){
             perror("Erro ao criar o processo");
             exit(-1);
         }else if(pidList[i] == 0){
-            srand ((unsigned) time(&t) * getpid());
-            int entered = 0, door = (rand() % 3) + 1;
+            srand((unsigned)time(&t) * getpid());
+            int entered, door = rand() % 3;
 
-            sem_wait(semEmpty);
-            sem_wait(sem3);
-            if(shared_data -> passengersNum < 15){
-
-                shared_data -> passengersNum++;
-                shared_data -> passengersId[shared_data -> index] = i;
-                shared_data -> index++;
+            sem_wait(semSafe);
+            if(shared_data -> stationA < 15){
+                sem_wait(semTrain);
+                shared_data -> stationA++;
                 printf("Passageiro %d chega á estação A\n", i + 1);
+                fflush(stdout);
                 entered = 1;
-
             }
-            sem_post(sem3);
+            sem_post(semSafe);
+
+            sleep(1);
 
             if(entered == 1){
-                if(door == 1){
-                    sem_wait(semDoor1);
-                    sleep(1);
-                    printf("Passageiro %d saiu pela porta %d\n", i + 1, door);
-                    sem_post(semDoor1);
-                }else if(door == 2){
-                    sem_wait(semDoor2);
-                    sleep(1);
-                    printf("Passageiro %d saiu pela porta %d\n", i + 1, door);
-                    sem_post(semDoor2);
-                }else{
-                    sem_wait(semDoor3);
-                    sleep(1);
-                    printf("Passageiro %d saiu pela porta %d\n", i + 1, door);
-                    sem_post(semDoor3);
+                sem_wait(semSafe);
+                if(shared_data -> stationA > 10){
+                    shared_data -> stationA--;
+                    sem_wait(semDoor[door]);
+                    printf("Passageiro %d sai na estação A pela porta %d\n", i + 1, door + 1);
+                    fflush(stdout);
+                    usleep(200000);
+                    sem_post(semDoor[door]);
+                    sem_post(semTrain);
+                    sem_post(semSafe);
+                    exit(0);
                 }
-                sem_post(semEmpty);
-                exit(0);
+                sem_post(semSafe);
+            }else{
+                printf("Passageiro %d á espera na estação A\n", i + 1);
+                fflush(stdout);
+                sem_wait(semSafe);
+                if(shared_data -> stationB < 10){
+                    shared_data -> stationB++;
+                    sem_wait(semDoor[door]);
+                    printf("Passageiro %d entra no metro na estação A pela porta %d\n", i + 1, door + 1);
+                    fflush(stdout);
+                    usleep(200000);
+                    sem_post(semDoor[door]);
+                    sem_wait(semTrain);
+                    entered = 1;
+                }
+                sem_post(semSafe);
             }
-            
+
+            sleep(2);
+
+            printf("Passageiro %d parte em direção á estação B\n", i + 1);
+            fflush(stdout);
+            sleep(5);
+
+            if(entered == 1){
+                sem_wait(semSafe);
+                if(shared_data -> stationB > 0){
+                    shared_data -> stationB--;
+                    sem_wait(semDoor[door]);
+                    printf("Passageiro %d sai na estação B pela porta %d\n", i + 1, door + 1);
+                    fflush(stdout);
+                    usleep(200000);
+                    sem_post(semDoor[door]);
+                    sem_post(semTrain);
+                    sem_post(semSafe);
+                    exit(0);
+                }
+                sem_post(semSafe);
+            }else{
+                printf("Passageiro %d á espera na estação B\n", i + 1);
+                fflush(stdout);
+                sem_wait(semSafe);
+                if (shared_data -> stationC < 5) {
+                    shared_data -> stationC++;
+                    sem_wait(semDoor[door]);
+                    printf("Passageiro %d entra no metro na estação B pela porta %d\n", i + 1, door + 1);
+                    fflush(stdout);
+                    usleep(200000);
+                    sem_post(semDoor[door]);
+                    sem_wait(semTrain);
+                }
+                sem_post(semSafe);
+            }
 
             if(munmap(shared_data, DATA_SIZE) < 0){
             perror("Erro ao remover mapping");
@@ -116,27 +162,15 @@ int main(void){
         }
     }
 
-    /*for(i = 0; i < 5; i++){
-        sem_wait(semFull);
-        sem_wait(sem3);
-        
-        shared_data -> passengersNum--;
-        printf("boas\n");
-
-        sem_post(sem3);
-        sem_post(semEmpty);
-    }*/
-
     for(i = 0; i < NUMBER_OF_CHILDREN; i++){
         waitpid(pidList[i], &status, 0);
     }
-    printf("%d\n", shared_data -> passengersNum);
 
-    if(sem_close(semFull) < 0 || sem_close(semEmpty) < 0 || sem_close(sem3) < 0){
+    if(sem_close(semTrain) < 0 || sem_close(semSafe) < 0 || sem_close(semDoor[0]) < 0 || sem_close(semDoor[1]) < 0 || sem_close(semDoor[2]) < 0){
         perror("Erro ao fechar semaforo\n");
         exit(-1);
     }
-    if(sem_unlink("semaFull") < 0 || sem_unlink("semaEmpty") < 0 || sem_unlink("sema3") < 0){
+    if(sem_unlink("semaTrain") < 0 || sem_unlink("semaSafe") < 0 || sem_unlink("semaDoor1") < 0 || sem_unlink("semaDoor2") < 0 || sem_unlink("semaDoor3") < 0){
         perror("Erro ao fechar semaforo\n");
         exit(-1);
     }

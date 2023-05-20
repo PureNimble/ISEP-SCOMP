@@ -1,0 +1,113 @@
+BEGIN
+    typedef struct {
+        int diff;
+    } sharedValues;
+
+    DEFINE DATA_SIZE as sizeof(sharedValues)
+    DEFINE FILE_NAME as "/shmEx06"
+
+    DEFINE main()
+        DEFINE fd, status
+        DEFINE pid
+        DEFINE run as true
+        DEFINE sem as sem_t*
+        fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR)
+        IF fd < 0
+            PRINT "Error creating shared memory"
+            EXIT -1
+        END
+
+        IF ftruncate(fd, DATA_SIZE) < 0
+            PRINT "Error allocating space in memory"
+            EXIT -1
+        END
+
+        sharedValues* shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+        shared_data->diff = 0
+
+        sem = sem_open("sema", O_CREAT | O_EXCL, 0644, 1)
+        IF sem == SEM_FAILED
+            PRINT "Error creating/opening semaphore"
+            EXIT -1
+        END
+
+        pid = fork()
+        IF pid < 0
+            PRINT "Error creating process"
+            EXIT -1
+        ELSE IF pid == 0
+            WHILE run
+                IF shared_data->diff > -2
+                    sem_wait(sem)
+                    PRINT "C"
+                    fflush(stdout)
+                    shared_data->diff--
+                    sem_post(sem)
+                    usleep(500000)
+                ELSE
+                    run = false
+                END
+            END
+
+            IF munmap(shared_data, DATA_SIZE) < 0
+                PRINT "Error removing mapping"
+                EXIT -1
+            END
+
+            IF close(fd) < 0
+                PRINT "Error closing file descriptor"
+                EXIT -1
+            END
+
+            EXIT 0
+        END
+
+        time_t t
+        int random
+
+        WHILE run
+            srand ((unsigned) time(&t))
+            random = (rand() % 2) + 1
+            IF shared_data->diff < 2
+                sem_wait(sem)
+                PRINT "S"
+                fflush(stdout)
+                shared_data->diff++
+                sem_post(sem)
+                sleep(random)
+            ELSE
+                run = false
+            END
+        END
+
+        waitpid(pid, &status, 0)
+        PRINT "\n"
+
+        IF sem_close(sem) < 0
+            PRINT "Error closing semaphore"
+            EXIT -1
+        END
+
+        IF sem_unlink("sema") < 0
+            PRINT "Error unlinking semaphore"
+            EXIT -1
+        END
+
+        IF munmap(shared_data, DATA_SIZE) < 0
+            PRINT "Error removing mapping"
+            EXIT -1
+        END
+
+        IF close(fd) < 0
+            PRINT "Error closing file descriptor"
+            EXIT -1
+        END
+
+        IF shm_unlink(FILE_NAME) < 0
+            PRINT "Error removing the file!"
+            EXIT -1
+        END
+
+        RETURN 0
+    END
+END

@@ -1,0 +1,58 @@
+BEGIN
+    DEFINE NUMBER_OF_CHILDREN 2
+    DEFINE main()
+        DEFINE status, i
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE semName[50]
+        DEFINE sem[NUMBER_OF_CHILDREN]
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            snprintf(semName, sizeof(semName), "sema%d", i)
+            sem[i] = sem_open(semName, O_CREAT | O_EXCL, 0644, 0)
+            IF sem[i] == SEM_FAILED
+                PRINT "Error creating/opening semaphore"
+                EXIT -1
+            END
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            pidList[i] = fork()
+            IF pidList[i] < 0
+                PRINT "Error creating process"
+                EXIT -1
+            ELSE IF pidList[i] == 0
+                IF i == 0
+                    PRINT "1st child"
+                    sem_post(sem[0])
+                ELSE
+                    sem_wait(sem[1])
+                    PRINT "2nd child"
+                END
+
+                EXIT 0
+            END
+        END
+
+        sem_wait(sem[0])
+        PRINT "Father"
+        sem_post(sem[1])
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            waitpid(pidList[i], &status, 0)
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            IF sem_close(sem[i]) < 0
+                PRINT "Error closing semaphore"
+                EXIT -1
+            END
+            snprintf(semName, sizeof(semName), "sema%d", i)
+            IF sem_unlink(semName) < 0
+                PRINT "Error unlinking semaphore"
+                EXIT -1
+            END
+        END
+
+        RETURN 0
+    END
+END

@@ -1,0 +1,99 @@
+BEGIN
+    DEFINE OUTPUT_FILE "Output.txt"
+    DEFINE NUMBERS_FILE "Numbers.txt"
+    DEFINE NUMBER_OF_CHILDREN 8
+
+    DEFINE main()
+        DEFINE status, num, i
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE t
+        DEFINE sem[2]
+
+        IF remove(OUTPUT_FILE) == 0
+            PRINT "The content of file " + OUTPUT_FILE + " was successfully deleted"
+        ELSE
+            PRINT "Error deleting file " + OUTPUT_FILE
+            EXIT -1
+        END
+
+        DEFINE outputFile = fopen(OUTPUT_FILE, "w")
+
+        IF outputFile == NULL
+            PRINT "Error creating file " + OUTPUT_FILE
+            EXIT -1
+        END
+
+        fclose(outputFile)
+
+        sem[0] = sem_open("numbersSema", O_CREAT | O_EXCL, 0644, 1)
+        sem[1] = sem_open("outputSema", O_CREAT | O_EXCL, 0644, 1)
+
+        IF sem[0] == SEM_FAILED OR sem[1] == SEM_FAILED
+            PRINT "Error creating/opening semaphore"
+            EXIT -1
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            pidList[i] = fork()
+            IF pidList[i] < 0
+                PRINT "Error creating process"
+                EXIT -1
+            ELSE IF pidList[i] == 0
+                DEFINE j, randomNum, opt = i + 1
+                srand(time(&t) * getpid())
+                randomNum = (rand() % 5) + 1
+                sem_wait(sem[0])
+                DEFINE numFile
+                numFile = fopen(NUMBERS_FILE, "r")
+                IF numFile == NULL
+                    PRINT "Error searching file " + NUMBERS_FILE
+                    EXIT -1
+                END
+                FOR j = 0 TO opt
+                    fscanf(numFile, "%d", &num)
+                END
+                fclose(numFile)
+                sem_post(sem[0])
+                sleep(randomNum)
+                sem_wait(sem[1])
+                outputFile = fopen(OUTPUT_FILE, "a")
+                IF outputFile == NULL
+                    PRINT "Error opening file " + OUTPUT_FILE
+                    EXIT -1
+                END
+                fprintf(outputFile, "[%d]%d\n", getpid(), num)
+                fclose(outputFile)
+                sem_post(sem[1])
+                EXIT 0
+            END
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            waitpid(pidList[i], &status, 0)
+        END
+
+        outputFile = fopen(OUTPUT_FILE, "a")
+        IF outputFile == NULL
+            PRINT "Error opening file " + OUTPUT_FILE
+            EXIT -1
+        END
+
+        WHILE fscanf(outputFile, "%d", &num) != EOF
+            PRINT "Number read from file " + OUTPUT_FILE + ": " + num
+        END
+
+        fclose(outputFile)
+
+        IF sem_close(sem[0]) < 0 OR sem_close(sem[1]) < 0
+            PRINT "Error closing semaphore"
+            EXIT -1
+        END
+
+        IF sem_unlink("numbersSema") < 0 OR sem_unlink("outputSema") < 0
+            PRINT "Error unlinking semaphore"
+            EXIT -1
+        END
+
+        RETURN 0
+    END
+END

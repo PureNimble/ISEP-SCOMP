@@ -1,0 +1,74 @@
+BEGIN
+    DEFINE NUMBER_OF_CHILDREN 3
+    DEFINE main()
+        DEFINE status, i
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE semName[50]
+        DEFINE sem[NUMBER_OF_CHILDREN]
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            snprintf(semName, sizeof(semName), "sema%d", i)
+            sem[i] = sem_open(semName, O_CREAT | O_EXCL, 0644, 0)
+            IF sem[i] == SEM_FAILED
+                PRINT "Error creating/opening semaphore"
+                EXIT -1
+            END
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            pidList[i] = fork()
+            IF pidList[i] < 0
+                PRINT "Error creating process"
+                EXIT -1
+            ELSE IF pidList[i] == 0
+                DEFINE nextId = i + 1
+                IF i == 0
+                    PRINT "Sistemas "
+                    fflush(stdout)
+                    sem_post(sem[nextId])
+                    sem_wait(sem[i])
+                    PRINT "a "
+                    fflush(stdout)
+                    sem_post(sem[nextId])
+                ELSE IF i == 1
+                    sem_wait(sem[i])
+                    PRINT "de "
+                    fflush(stdout)
+                    sem_post(sem[nextId])
+                    sem_wait(sem[i])
+                    PRINT "melhor "
+                    fflush(stdout)
+                    sem_post(sem[nextId])
+                ELSE
+                    sem_wait(sem[i])
+                    PRINT "computadores - "
+                    fflush(stdout)
+                    sem_post(sem[0])
+                    sem_wait(sem[i])
+                    PRINT "disciplina!\n"
+                    fflush(stdout)
+                END
+
+                EXIT 0
+            END
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            waitpid(pidList[i], &status, 0)
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            IF sem_close(sem[i]) < 0
+                PRINT "Error closing semaphore"
+                EXIT -1
+            END
+            snprintf(semName, sizeof(semName), "sema%d", i)
+            IF sem_unlink(semName) < 0
+                PRINT "Error unlinking semaphore"
+                EXIT -1
+            END
+        END
+
+        RETURN 0
+    END
+END

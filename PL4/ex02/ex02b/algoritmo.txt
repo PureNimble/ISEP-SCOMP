@@ -1,0 +1,110 @@
+typedef struct {
+    int indice;
+    char strings[50][80];
+} sharedStrings;
+
+DEFINE DATA_SIZE sizeof(sharedStrings)
+DEFINE FILE_NAME "/shmEx02b"
+DEFINE NUMBER_OF_CHILDREN 10
+DEFINE STRING_LIMIT 50
+
+DEFINE main()
+    DEFINE fd, status, i
+    DEFINE pidList[NUMBER_OF_CHILDREN]
+    DEFINE t
+    DEFINE sem
+
+    fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR)
+
+    IF fd < 0
+        PRINT "Error creating shared memory"
+        EXIT -1
+    END
+
+    IF ftruncate(fd, DATA_SIZE) < 0
+        PRINT "Error allocating space in memory"
+        EXIT -1
+    END
+
+    sharedStrings *shared_data = (sharedStrings*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+    shared_data -> indice = 0
+
+    sem = sem_open("sem", O_CREAT | O_EXCL, 0644, 1)
+
+    IF sem == SEM_FAILED
+        PRINT "Error creating semaphore"
+        EXIT -1
+    END
+
+    FOR i = 0 TO NUMBER_OF_CHILDREN
+        pidList[i] = fork()
+
+        IF pidList[i] < 0
+            PRINT "Error creating process"
+            EXIT -1
+        ELSE IF pidList[i] == 0
+            DEFINE randomNum
+            DEFINE pid = getpid()
+            srand ((unsigned) time(&t) * pid)
+
+            WHILE shared_data -> indice < STRING_LIMIT
+                sem_wait(sem)
+                sprintf(shared_data -> strings[shared_data->indice], "I'm the Father - with PID %d", pid)
+                PRINT "String written in shared memory: " + shared_data->strings[shared_data -> indice]
+                shared_data -> indice++
+                randomNum = (rand() % 5) + 1
+                sem_post(sem)
+                sleep(randomNum)
+            END
+
+            IF munmap(shared_data, DATA_SIZE) < 0
+                PRINT "Error removing mapping"
+                EXIT -1
+            END
+
+            IF close(fd) < 0
+                PRINT "Error closing file descriptor"
+                EXIT -1
+            END
+
+            EXIT 0
+        END
+    END
+
+    FOR i = 0 TO NUMBER_OF_CHILDREN
+        waitpid(pidList[i], &status, 0)
+    END
+
+    FOR i = 0 TO STRING_LIMIT
+        PRINT shared_data -> strings[i]
+    END
+
+    PRINT "Total number of lines: " + shared_data -> indice
+
+    IF sem_close(sem) < 0
+        PRINT "Error closing semaphore"
+        EXIT -1
+    END
+
+    IF sem_unlink("sem") < 0
+        PRINT "Error unlinking semaphore"
+        EXIT -1
+    END
+
+    IF munmap(shared_data, DATA_SIZE) < 0
+        PRINT "Error removing mapping"
+        EXIT -1
+    END
+
+    IF close(fd) < 0
+        PRINT "Error closing file descriptor"
+        EXIT -1
+    END
+
+    IF shm_unlink(FILE_NAME) < 0
+        PRINT "Error removing the file!"
+        EXIT -1
+    END
+
+    RETURN 0
+END

@@ -1,0 +1,67 @@
+BEGIN
+    DEFINE OUTPUT_FILE "Output.txt"
+    DEFINE NUMBERS_FILE "Numbers.txt"
+    DEFINE NUMBER_OF_CHILDREN 8
+
+    DEFINE main()
+        DEFINE status, i
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+
+        IF remove(OUTPUT_FILE) == 0
+            PRINT "The content of file " + OUTPUT_FILE + " was successfully deleted"
+        ELSE
+            PRINT "Error deleting file " + OUTPUT_FILE
+            EXIT -1
+        END
+
+        DEFINE outputFile = fopen(OUTPUT_FILE, "w")
+
+        IF outputFile == NULL
+            PRINT "Error creating file " + OUTPUT_FILE
+            EXIT -1
+        END
+
+        fclose(outputFile)
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            pidList[i] = fork()
+            IF pidList[i] < 0
+                PRINT "Error creating process"
+                EXIT -1
+            ELSE IF pidList[i] == 0
+                DEFINE j, num, opt = i + 1
+                DEFINE numFile
+
+                numFile = fopen(NUMBERS_FILE, "r")
+                IF numFile == NULL
+                    PRINT "Error opening file " + NUMBERS_FILE
+                    EXIT -1
+                END
+
+                FOR j = 0 TO opt
+                    fscanf(numFile, "%d", &num)
+                END
+
+                fclose(numFile)
+
+                outputFile = fopen(OUTPUT_FILE, "a")
+                IF outputFile == NULL
+                    PRINT "Error opening file " + OUTPUT_FILE
+                    EXIT -1
+                END
+
+                fprintf(outputFile, "[%d]%d\n", getpid(), num)
+                fclose(outputFile)
+                EXIT 0
+
+            END
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            waitpid(pidList[i], &status, 0)
+        END
+
+        RETURN 0
+    END
+END
+

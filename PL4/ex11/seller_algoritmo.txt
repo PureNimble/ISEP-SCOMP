@@ -1,3 +1,6 @@
+1) Padrões usados: Sincronização entre processos (por ocorrência de eventos).
+
+2)
 BEGIN
     DEFINE main()
         DEFINE i, random, t

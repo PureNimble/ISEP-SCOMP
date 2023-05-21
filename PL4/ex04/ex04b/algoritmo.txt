@@ -1,3 +1,6 @@
+1) Padrões usados: Sincronização entre processos (por ocorrência de eventos).
+
+2)
 BEGIN
     DEFINE NUMBER_OF_CHILDREN as 2
     DEFINE NUMBER_OF_EXECUTIONS as 15

@@ -36,8 +36,8 @@ int main(void){
     shared_data -> readCount = 0;
     shared_data -> writeCount = 0;
 
-    semWriter = sem_open("semaWriter", O_CREAT /*| O_EXCL*/, 0644, 1);
-    sem1 = sem_open("sema1", O_CREAT /*| O_EXCL*/, 0644, 1);
+    semWriter = sem_open("semaWriter", O_CREAT | O_EXCL, 0644, 1);
+    sem1 = sem_open("sema1", O_CREAT | O_EXCL, 0644, 1);
 
     if(semWriter == SEM_FAILED || sem1 == SEM_FAILED){
         perror("Erro no criar/abrir semaforo");

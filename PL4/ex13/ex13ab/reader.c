@@ -25,8 +25,8 @@ int main(void){
     
     sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 
-    semWriter = sem_open("semaWriter", O_CREAT /*| O_EXCL*/, 0644, 1);
-    sem1 = sem_open("sema1", O_CREAT /*| O_EXCL*/, 0644, 1);
+    semWriter = sem_open("semaWriter", O_CREAT);
+    sem1 = sem_open("sema1", O_CREAT);
 
     if(semWriter == SEM_FAILED || sem1 == SEM_FAILED){
         perror("Erro no criar/abrir semaforo");

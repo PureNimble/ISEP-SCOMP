@@ -1,3 +1,6 @@
+1) Padrões usados: N/A.
+
+2)
 BEGIN
     DEFINE main(argc, argv)
         IF argc != 3 THEN

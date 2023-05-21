@@ -1,3 +1,7 @@
+1) Padrões usados: Sincronização entre processos (por ocorrência de eventos) e de acesso a recursos com
+capacidade limitada.
+
+2)
 BEGIN
     DEFINE main()
         DEFINE fd, status, i
@@ -20,10 +24,10 @@ BEGIN
         shared_data -> specialNum = 0
         shared_data -> normalNum = 0
 
-        semClub = FULL_CAPACITY
-        semVip = 0
-        semSpecial = 0
-        semNormal = 0
+        semClub = sem_open("semaClub", O_CREAT | O_EXCL, 0644, FULL_CAPACITY);
+        semVip = sem_open("semaVip", O_CREAT | O_EXCL, 0644, 0);
+        semSpecial = sem_open("semaSpecial", O_CREAT | O_EXCL, 0644, 0);
+        semNormal = sem_open("semaNormal", O_CREAT | O_EXCL, 0644, 0);
         
         FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
             pidList[i] = fork()

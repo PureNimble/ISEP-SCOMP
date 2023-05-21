@@ -1,3 +1,6 @@
+1) Padrões usados: Variação do problema dos leitores e escritores (sincronização por exclusão mútua).
+
+2)
 BEGIN
     DEFINE main()
         DEFINE opt

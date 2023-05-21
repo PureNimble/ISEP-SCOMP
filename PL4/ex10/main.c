@@ -46,11 +46,11 @@ int main(void){
     shared_data -> stationB = 0;
     shared_data->stationC = 0;
 
-    semTrain = sem_open("semaTrain", O_CREAT /*| O_EXCL*/, 0644, 20);
-    semSafe = sem_open("semaSafe", O_CREAT /*| O_EXCL*/, 0644, 1);
-    semDoor[0] = sem_open("semaDoor1", O_CREAT /*| O_EXCL*/, 0644, 1);
-    semDoor[1] = sem_open("semaDoor2", O_CREAT /*| O_EXCL*/, 0644, 1);
-    semDoor[2] = sem_open("semaDoor3", O_CREAT /*| O_EXCL*/, 0644, 1);
+    semTrain = sem_open("semaTrain", O_CREAT | O_EXCL, 0644, 20);
+    semSafe = sem_open("semaSafe", O_CREAT | O_EXCL, 0644, 1);
+    semDoor[0] = sem_open("semaDoor1", O_CREAT | O_EXCL, 0644, 1);
+    semDoor[1] = sem_open("semaDoor2", O_CREAT | O_EXCL, 0644, 1);
+    semDoor[2] = sem_open("semaDoor3", O_CREAT | O_EXCL, 0644, 1);
 
     if(semTrain == SEM_FAILED || semDoor[0] == SEM_FAILED || semDoor[1] == SEM_FAILED || semDoor[2] == SEM_FAILED || semSafe == SEM_FAILED){
         perror("Erro no criar/abrir semaforo");

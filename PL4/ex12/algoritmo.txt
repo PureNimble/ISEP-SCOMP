@@ -1,3 +1,7 @@
+1) Padrões usados: Problema produtor/consumidor (sincronização por exclusão mútua, 
+por ocorrência de eventos e de acesso a recursos com capacidade limitada).
+
+2)
 BEGIN
     DEFINE main()
         DEFINE fd, status, i, read

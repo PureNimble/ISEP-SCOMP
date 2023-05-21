@@ -1,3 +1,6 @@
+1) Padrões usados: Controlo de acesso a recursos com capacidade limitada.
+
+2)
 BEGIN
     DEFINE main()
         DEFINE status, i

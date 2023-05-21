@@ -1,3 +1,6 @@
+1) Padrões usados: Exclusão mútua.
+
+2)
 BEGIN
 
     typedef struct {

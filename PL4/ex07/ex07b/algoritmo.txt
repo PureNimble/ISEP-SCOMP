@@ -1,3 +1,6 @@
+1) Padrões usados: Barreira (sincronização por exclusão mútua e ocorrência de eventos).
+
+2)
 BEGIN
     typedef struct {
         int barrier;

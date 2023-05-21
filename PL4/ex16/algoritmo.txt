@@ -1,3 +1,6 @@
+1) Padrões usados: Barreira (sincronização por exclusão mútua e por ocorrência de eventos).
+
+2)
 BEGIN
     DEFINE main()
         DEFINE fd, status, i
@@ -25,8 +28,8 @@ BEGIN
             shared_data -> initialVec[i] = (rand() % 10000) + 1
         END
 
-        semMem = 1
-        semBar = 0
+        semMem = sem_open("semaMemory", O_CREAT | O_EXCL, 0644, 1);
+        semBar = sem_open("semaBarrier", O_CREAT | O_EXCL, 0644, 0);
 
         FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
             pidList[i] = fork()

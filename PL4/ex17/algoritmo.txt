@@ -1,3 +1,6 @@
+1) Padrões usados: exclusão mútua e sincronização entre processos (por ocorrência de eventos).
+
+2)
 BEGIN
     DEFINE main()
         DEFINE fd, status, i
@@ -19,8 +22,8 @@ BEGIN
         sensors *shared_data = (sensors*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
         shared_data -> alarm = 0
 
-        semRead = 0
-        semWrite = 1
+        semRead = sem_open("semaRead", O_CREAT | O_EXCL, 0644, 0);
+        semWrite = sem_open("semaWrite", O_CREAT | O_EXCL, 0644, 1);
 
         FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
             pidList[i] = fork()

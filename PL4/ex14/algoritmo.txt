@@ -1,0 +1,91 @@
+1) Padrões usados: Sincronização entre processos (por ocorrência de eventos) e exclusão mútua.
+
+2)
+BEGIN
+    DEFINE main()
+        DEFINE fd, i
+        DEFINE pid
+        DEFINE t
+        DEFINE semA, semB, semWrite
+
+        fd = shm_open(FILE_NAME, O_CREAT|O_RDWR, S_IRUSR|S_IWUSR)
+        IF fd < 0 THEN
+            PRINT "Erro ao criar memoria partilhada"
+            EXIT -1
+        END
+
+        IF ftruncate(fd, DATA_SIZE) < 0 THEN
+            PRINT "Erro ao alocar espaco na memoria"
+            EXIT -1
+        END
+
+        sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+        semA = sem_open("semaA", O_CREAT /*| O_EXCL*/, 0644, 1)
+        semB = sem_open("semaB", O_CREAT /*| O_EXCL*/, 0644, 0)
+        semWrite = sem_open("semaWrite", O_CREAT /*| O_EXCL*/, 0644, 1)
+
+        FOR i = 0 TO SET_A - 1 DO
+            pid = fork()
+            IF pid < 0 THEN
+                PRINT "Erro ao criar o processo"
+                EXIT -1
+            ELSE IF pid == 0 THEN
+                INT sval, j
+                srand(time(&t) * getpid())
+
+                WHILE true DO
+                    WAIT semA
+                    WAIT semWrite
+                    PRINT "A" + (i + 1) + " a escrever na zona de memoria partilhada"
+                    FOR j = 0 TO ARRAY_SIZE - 1 DO
+                        shared_data -> array[j] = rand() % 100
+                    END
+                    SLEEP 1
+                    PRINT "A" + (i + 1) + " terminou de escrever na zona de memoria partilhada e notificou outros sets."
+                    SIGNAL semWrite
+                    SIGNAL semA
+
+                    GET_VALUE semA INTO sval
+                    IF sval = 0 THEN
+                        SIGNAL semB
+                    END
+
+                    SLEEP 5
+                END
+            END
+        END
+
+        FOR i = 0 TO SET_B - 1 DO
+            pid = fork()
+            IF pid < 0 THEN
+                PRINT "Erro ao criar o processo"
+                EXIT -1
+            ELSE IF pid == 0 THEN
+                INT sval, j
+                srand(time(&t) * getpid())
+
+                WHILE true DO
+                    WAIT semB
+                    WAIT semWrite
+                    PRINT "B" + (i + 1) + " a escrever na zona de memoria partilhada"
+                    FOR j = 0 TO ARRAY_SIZE - 1 DO
+                        shared_data -> array[j] = rand() % 100
+                    END
+                    SLEEP 1
+                    PRINT "B" + (i + 1) + " terminou de escrever na zona de memoria partilhada e notificou outros sets."
+                    SIGNAL semWrite
+
+                    SIGNAL semB
+
+                    GET_VALUE semB INTO sval
+                    IF sval = 0 THEN
+                        SIGNAL semA
+                    END
+
+                    SLEEP 6
+                END
+            END
+        END
+        RETURN 0
+    END
+END

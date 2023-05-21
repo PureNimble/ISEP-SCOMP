@@ -1,4 +1,4 @@
-1) Padrões usados: Exclusão mútua e controlo de acesso a recursos com capacidade limitada
+1) Padrões usados: Exclusão mútua e controlo de acesso a recursos com capacidade limitada.
 
 2)
 BEGIN

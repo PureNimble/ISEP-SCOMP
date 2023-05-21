@@ -1,3 +1,6 @@
+1) Padrões usados: N/A.
+
+2)
 BEGIN
     DEFINE OUTPUT_FILE "Output.txt"
     DEFINE NUMBERS_FILE "Numbers.txt"

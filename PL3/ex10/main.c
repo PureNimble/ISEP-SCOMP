@@ -8,7 +8,7 @@
 #define BUFFER_SIZE 10
 #define MAX_VALUES 30
 
-int main() {
+int main(void){
     int fd[2];
     int i, j, readValue;
     int buffer[BUFFER_SIZE];

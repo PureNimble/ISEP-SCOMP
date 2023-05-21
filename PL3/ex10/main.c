@@ -1,45 +1,21 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <sys/wait.h>
+#include <sys/mman.h>
 
 #define BUFFER_SIZE 10
+#define MAX_VALUES 30
 
-typedef struct {
+int main() {
+    int fd[2];
+    int i, j, readValue;
     int buffer[BUFFER_SIZE];
-    volatile int counter;
-} sharedValues;
-
-#define DATA_SIZE sizeof(sharedValues)
-#define FILE_NAME "/shmEx10"
-#define NUMBER_OF_OPERATIONS 30
-
-int main(void){
-
-    int fd, status, producer[2], consumer[2], i;
     pid_t pid;
-    char allow;
-    
-    fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR);
-    if(fd < 0) {
-		perror("Erro ao criar memoria partilhada");
-        exit(-1);
-	}
 
-    if (ftruncate (fd, DATA_SIZE) < 0) {
-        perror("Erro ao alocar espaço na memória");
-        exit(-1);
-    }
-    
-    sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-
-    if (pipe(producer) < 0 || pipe(consumer) < 0) {
-        perror("Erro num dos pipes");
+    if(pipe(fd) < 0){
+        perror("Erro no pipe");
         exit(-1);
     }
 
@@ -48,62 +24,24 @@ int main(void){
         perror("Erro ao criar o processo");
         exit(-1);
     }else if(pid == 0){
-        int nextConsumed, readIndex = 0;
-        for(i = 0; i < NUMBER_OF_OPERATIONS; i++){
-            if(shared_data -> counter == 0) {
-                close(producer[1]);
-                read(producer[0], &allow, sizeof(char));
-                close(producer[0]);
-            }
-            nextConsumed = shared_data -> buffer[readIndex];
-            readIndex = (readIndex + 1) % BUFFER_SIZE;
-            printf("O valor lido pelo processo filho foi: %d\n", nextConsumed);
-            shared_data -> counter--;
-        }
+        close(fd[0]);
+        for(j = 0; j < MAX_VALUES; j++){
+            buffer[j % BUFFER_SIZE] = j + 1;
 
-        if(munmap(shared_data, DATA_SIZE) < 0){
-            perror("Erro ao remover mapping");
-            exit(-1);
+            write(fd[1], &buffer[j % BUFFER_SIZE], sizeof(int));
         }
-
-        if(close(fd) < 0){
-            perror("Erro ao fechar file descriptor");
-            exit(-1);
-        }
+        close(fd[1]);
 
         exit(0);
     }
-    int writeIndex = 0;
-    for(i = 0; i < NUMBER_OF_OPERATIONS; i++){ 
-        if(shared_data -> counter == BUFFER_SIZE){
-            close(consumer[1]);
-            read(consumer[0], &allow, sizeof(char));
-            close(consumer[0]);
-        } 
-        shared_data -> buffer[writeIndex] = i + 1;
-        writeIndex = (writeIndex + 1) % BUFFER_SIZE;
-        close(consumer[0]);
-        write(consumer[1], &allow, sizeof(char));
-        close(consumer[1]);
-        shared_data -> counter++;
+
+    close(fd[1]);
+    for(i = 0; i < MAX_VALUES; i++){
+        read(fd[0], &readValue, sizeof(int));
+
+        printf("Valor lido: %d\n", readValue);
     }
-
-    waitpid(pid, &status, 0);
-
-    if(munmap(shared_data, DATA_SIZE) < 0){
-        perror("Erro ao remover mapping");
-        exit(-1);
-    }
-
-    if(close(fd) < 0){
-        perror("Erro ao fechar file descriptor");
-        exit(-1);
-    }
-
-    if (shm_unlink(FILE_NAME) < 0) {
-        perror("Erro ao remover o Ficheiro!");
-        exit(-1);
-    }
-
+    close(fd[0]);
+    
     return 0;
 }

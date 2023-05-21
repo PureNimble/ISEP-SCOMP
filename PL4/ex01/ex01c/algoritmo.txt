@@ -1,107 +1,115 @@
 BEGIN
-    DEFINE OUTPUT_FILE "Output.txt"
-    DEFINE NUMBERS_FILE "Numbers.txt"
-    DEFINE NUMBER_OF_CHILDREN 8
+    DEFINE OUTPUT_FILE as "Output.txt"
+    DEFINE NUMBERS_FILE as "Numbers.txt"
+    DEFINE NUMBER_OF_CHILDREN as 8
 
-    DEFINE main()
+    DEFINE main(void):
         DEFINE status, num, i
         DEFINE pidList[NUMBER_OF_CHILDREN]
         DEFINE sem[NUMBER_OF_CHILDREN]
         DEFINE semName[50]
 
-        IF remove(OUTPUT_FILE) == 0
-            PRINT "The content of file " + OUTPUT_FILE + " was successfully deleted"
-        ELSE
-            PRINT "Error deleting file " + OUTPUT_FILE
+        IF REMOVE OUTPUT_FILE == 0:
+            PRINT "O conteudo do ficheiro " + OUTPUT_FILE + " foi apagado com sucesso"
+        ELSE:
+            PRINT "Erro ao apagar ficheiro Output.txt"
             EXIT -1
         END
 
         DEFINE outputFile = fopen(OUTPUT_FILE, "w")
 
-        IF outputFile == NULL
-            PRINT "Error creating file " + OUTPUT_FILE
+        IF outputFile == NULL:
+            PRINT "Erro ao criar ficheiro Output.txt"
             EXIT -1
         END
 
         fclose(outputFile)
 
-        FOR i = 0 TO NUMBER_OF_CHILDREN
+        FOR i = 0 TO NUMBER_OF_CHILDREN:
             snprintf(semName, sizeof(semName), "numbersSema%d", i)
             sem[i] = sem_open(semName, O_CREAT | O_EXCL, 0644, 0)
 
-            IF sem[i] == SEM_FAILED
-                PRINT "Error creating/opening semaphore"
+            IF sem[i] == SEM_FAILED:
+                PRINT "Erro no criar/abrir semaforo"
                 EXIT -1
             END
+
         END
 
-        FOR i = 0 TO NUMBER_OF_CHILDREN
+        FOR i = 0 TO NUMBER_OF_CHILDREN:
             pidList[i] = fork()
 
-            IF pidList[i] < 0
-                PRINT "Error creating process"
+            IF pidList[i] < 0:
+                DEFINE "Erro ao criar o processo"
                 EXIT -1
-            ELSE IF pidList[i] == 0
-                sem_wait(sem[i])
+            ELSE IF pidList[i] == 0:
+                DEFINE j, randomNum, opt = i + 1
+                srand((unsigned)time(&t) * getpid())
+                randomNum = (rand() % 5) + 1
+                WAIT sem[i]
                 DEFINE numFile
                 numFile = fopen(NUMBERS_FILE, "r")
 
-                IF numFile == NULL
-                    PRINT "Error searching file " + NUMBERS_FILE
+                IF numFile == NULL:
+                    PRINT "Erro ao procurar ficheiro"
                     EXIT -1
                 END
 
-                WHILE fscanf(numFile, "%d", &num) != EOF
+                FOR j = 0 TO opt:
+                    fscanf(numFile, "%d", &num)
                 END
 
                 fclose(numFile)
-
+                SIGNAL sem[i]
+                SLEEP randomNum
+                WAIT sem[i + 1]
                 outputFile = fopen(OUTPUT_FILE, "a")
 
-                IF outputFile == NULL
-                    PRINT "Error opening file " + OUTPUT_FILE
+                IF outputFile == NULL:
+                    PRINT "Erro ao abrir ficheiro Output.txt"
                     EXIT -1
                 END
 
                 fprintf(outputFile, "[%d]%d\n", getpid(), num)
                 fclose(outputFile)
-
-                sem_post(sem[i + 1])
+                SIGNAL sem[i + 1]
                 EXIT 0
             END
+
         END
 
-        sem_post(sem[0])
+        SIGNAL sem[0]
 
-        FOR i = 0 TO NUMBER_OF_CHILDREN
+        FOR i = 0 TO NUMBER_OF_CHILDREN:
             waitpid(pidList[i], &status, 0)
         END
 
         outputFile = fopen(OUTPUT_FILE, "a")
 
-        IF outputFile == NULL
-            PRINT "Error opening file " + OUTPUT_FILE
+        IF outputFile == NULL:
+            PRINT "Erro ao abrir ficheiro Output.txt"
             EXIT -1
         END
 
-        WHILE fscanf(outputFile, "%d", &num) != EOF
-            PRINT "Number read from file " + OUTPUT_FILE + ": " + num
+        WHILE fscanf(outputFile, "%d", &num) != EOF:
+            PRINT "Número lido do ficheiro Output.txt:" + num
         END
 
         fclose(outputFile)
 
-        FOR i = 0 TO NUMBER_OF_CHILDREN
-            IF sem_close(sem[i]) < 0
-                PRINT "Error closing semaphore"
+        FOR i = 0 TO NUMBER_OF_CHILDREN:
+            IF sem_close(sem[i]) < 0:
+                PRINT "Erro ao fechar semaforo"
                 EXIT -1
             END
 
             snprintf(semName, sizeof(semName), "numbersSema%d", i)
 
-            IF sem_unlink(semName) < 0
-                PRINT "Error unlinking semaphore"
+            IF sem_unlink(semName) < 0:
+                PRINT "Erro ao fechar semaforo"
                 EXIT -1
             END
+
         END
 
         RETURN 0

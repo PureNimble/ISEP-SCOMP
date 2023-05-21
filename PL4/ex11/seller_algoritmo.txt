@@ -1,0 +1,60 @@
+BEGIN
+    DEFINE main()
+        DEFINE i, random, t
+        DEFINE fd
+        DEFINE semCostumer, semSeller
+
+        fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR)
+        IF fd < 0 THEN
+            PRINT "Erro ao criar memoria partilhada"
+            EXIT -1
+        END
+
+        IF ftruncate(fd, DATA_SIZE) < 0 THEN
+            PRINT "Erro ao alocar espaço na memória"
+            EXIT -1
+        END
+
+        sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+        shared_data -> ticketsNum = 15
+
+        semCostumer = sem_open("semaCostumer", O_CREAT | O_EXCL, 0644, 0)
+        semSeller = sem_open("semaSeller", O_CREAT | O_EXCL, 0644, 0)
+
+        IF semCostumer == SEM_FAILED OR semSeller == SEM_FAILED THEN
+            PRINT "Erro no criar/abrir semaforo"
+            EXIT -1
+        END
+
+        FOR i = 0 TO NUMBER_OF_TICKETS - 1 DO
+            t = time(NULL)
+            srand(t * getpid())
+            random = (rand() % 10) + 1
+
+            PRINT "A vender bilhete " + (i + 1) + ": "
+            PRINT "Transação em curso..."
+            SLEEP(random)
+            shared_data -> ticket = i + 1
+            shared_data -> ticketsNum--
+            SIGNAL(semCostumer)
+            WAIT(semSeller)
+        END
+
+        IF sem_close(semCostumer) < 0 OR sem_close(semSeller) < 0 THEN
+            PRINT "Erro ao fechar semaforo\n"
+            EXIT -1
+        END
+
+        IF munmap(shared_data, DATA_SIZE) < 0 THEN
+            PRINT "Erro ao remover mapping"
+            EXIT -1
+        END
+
+        IF close(fd) < 0 THEN
+            PRINT "Erro ao fechar file descriptor"
+            EXIT -1
+        END
+
+        RETURN 0
+    END
+END

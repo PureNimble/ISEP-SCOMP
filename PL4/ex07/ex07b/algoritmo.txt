@@ -3,85 +3,87 @@ BEGIN
         int barrier;
     } sharedValues;
 
-    DEFINE DATA_SIZE as sizeof(sharedValues)
+    DEFINE DATA_SIZE as size of sharedValues structure
     DEFINE FILE_NAME as "/shmEx07b"
     DEFINE NUMBER_OF_PROCESSES as 6
     DEFINE NUMBER_OF_CHILDREN as 5
 
-    DEFINE buy_beer(n)
-        PRINT "P%d a comprar cerveja", n
+    DEFINE buy_beer(n) function
+        PRINT "Pn a comprar cerveja" where n is the parameter
     END
 
-    DEFINE buy_chips(n)
-        PRINT "P%d a comprar batatas", n
+    DEFINE buy_chips(n) function
+        PRINT "Pn a comprar batatas" where n is the parameter
     END
 
-    DEFINE eat_and_drink()
+    DEFINE eat_and_drink() function
         PRINT "P1, P2, P3, P4, P5 e P6 a comer e a beber"
     END
 
-    DEFINE main()
+    DEFINE main() function
+
         DEFINE fd, status, random, i
-        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE pidList as an array of pid_t with size NUMBER_OF_CHILDREN
         DEFINE t as time_t
-        DEFINE semMem, semBar as sem_t*
+        DEFINE semMem, semBar as sem_t pointers
+
         fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR)
-        IF fd < 0
+        IF fd < 0 THEN
             PRINT "Error creating shared memory"
             EXIT -1
         END
 
-        IF ftruncate(fd, DATA_SIZE) < 0
+        IF ftruncate(fd, DATA_SIZE) < 0 THEN
             PRINT "Error allocating space in memory"
             EXIT -1
         END
 
-        sharedValues* shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
-        shared_data->barrier = 0
+        sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+        shared_data -> barrier = 0
 
         semMem = sem_open("semaMemory", O_CREAT | O_EXCL, 0644, 1)
         semBar = sem_open("semaBarrier", O_CREAT | O_EXCL, 0644, 0)
-        IF semMem == SEM_FAILED OR semBar == SEM_FAILED
+        IF semMem == SEM_FAILED OR semBar == SEM_FAILED THEN
             PRINT "Error creating/opening semaphore"
             EXIT -1
         END
 
-        FOR i = 0 TO NUMBER_OF_CHILDREN
+        FOR i = 0 TO NUMBER_OF_CHILDREN-1 DO
             pidList[i] = fork()
-            IF pidList[i] < 0
+            IF pidList[i] < 0 THEN
                 PRINT "Error creating process"
                 EXIT -1
-            ELSE IF pidList[i] == 0
+            ELSE IF pidList[i] == 0 THEN
+
                 srand ((unsigned) time(&t) * getpid())
                 random = (rand() % 5) + 1
-                sleep(random)
-                IF i > 0
-                    DEFINE prob
+                SLEEP(random)
+                IF i > 0 THEN
                     prob = (rand() % 10) + 1
-                    IF prob > 5
-                        buy_beer(i+2)
+                    IF prob > 5 THEN
+                        CALL buy_beer(i+2)
                     ELSE
-                        buy_chips(i+2)
+                        CALL buy_chips(i+2)
                     END
                 ELSE
-                    buy_beer(i+2)
+                    CALL buy_beer(i+2)
                 END
-                sem_wait(semMem)
-                shared_data->barrier++
-                sem_post(semMem)
-                IF shared_data->barrier == NUMBER_OF_PROCESSES
-                    sem_post(semBar)
+                WAIT semMem
+                shared_data -> barrier++
+                SIGNAL semMem
+                IF shared_data -> barrier == NUMBER_OF_PROCESSES THEN
+                    SIGNAL semBar
                 END
-                sem_wait(semBar)
-                sem_post(semBar)
-                eat_and_drink()
+                WAIT semBar
+                SIGNAL semBar
+                CALL eat_and_drink()
 
-                IF munmap(shared_data, DATA_SIZE) < 0
+                IF munmap(shared_data, DATA_SIZE) < 0 THEN
                     PRINT "Error removing mapping"
                     EXIT -1
                 END
 
-                IF close(fd) < 0
+                IF close(fd) < 0 THEN
                     PRINT "Error closing file descriptor"
                     EXIT -1
                 END
@@ -92,46 +94,48 @@ BEGIN
 
         srand ((unsigned) time(&t) * getpid())
         random = (rand() % 5) + 1
-        sleep(random)
-        buy_chips(1)
-        sem_wait(semMem)
-        shared_data->barrier++
-        sem_post(semMem)
-        IF shared_data->barrier == NUMBER_OF_PROCESSES
-            sem_post(semBar)
+        SLEEP(random)
+        CALL buy_chips(1)
+        WAIT semMem
+        shared_data -> barrier++
+        SIGNAL semMem
+        IF shared_data -> barrier == NUMBER_OF_PROCESSES THEN
+            SIGNAL semBar
         END
-        sem_wait(semBar)
-        sem_post(semBar)
-        eat_and_drink()
-        FOR i = 0 TO NUMBER_OF_CHILDREN
+        WAIT semBar
+        SIGNAL semBar
+        CALL eat_and_drink()
+        FOR i = 0 TO NUMBER_OF_CHILDREN-1 DO
             waitpid(pidList[i], &status, 0)
         END
-        PRINT "\n"
+        PRINT newline
 
-        IF sem_close(semMem) < 0 OR sem_close(semBar) < 0
+        IF sem_close(semMem) < 0 OR sem_close(semBar) < 0 THEN
             PRINT "Error closing semaphore"
             EXIT -1
         END
-        IF sem_unlink("semaMemory") < 0 OR sem_unlink("semaBarrier") < 0
+
+        IF sem_unlink("semaMemory") < 0 OR sem_unlink("semaBarrier") < 0 THEN
             PRINT "Error unlinking semaphore"
             EXIT -1
         END
 
-        IF munmap(shared_data, DATA_SIZE) < 0
+        IF munmap(shared_data, DATA_SIZE) < 0 THEN
             PRINT "Error removing mapping"
             EXIT -1
         END
 
-        IF close(fd) < 0
+        IF close(fd) < 0 THEN
             PRINT "Error closing file descriptor"
             EXIT -1
         END
 
-        IF shm_unlink(FILE_NAME) < 0
-            PRINT "Error removing the file!"
+        IF shm_unlink(FILE_NAME) < 0 THEN
+            PRINT "Error removing the file"
             EXIT -1
         END
 
         RETURN 0
     END
+
 END

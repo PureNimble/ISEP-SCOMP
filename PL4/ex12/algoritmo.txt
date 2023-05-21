@@ -1,0 +1,119 @@
+BEGIN
+    DEFINE main()
+        DEFINE fd, status, i, read
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE semFull, semEmpty, sem3
+
+        fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR)
+        IF fd < 0 THEN
+            PRINT "Erro ao criar memoria partilhada"
+            EXIT -1
+        END
+
+        IF ftruncate(fd, DATA_SIZE) < 0 THEN
+            PRINT "Erro ao alocar espaço na memória"
+            EXIT -1
+        END
+
+        sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+        shared_data -> index = 0
+        shared_data -> elementsNum = 0
+
+        semFull = sem_open("semaFull", O_CREAT | O_EXCL, 0644, 0)
+        semEmpty = sem_open("semaEmpty", O_CREAT | O_EXCL, 0644, BUFFER_SIZE)
+        sem3 = sem_open("sema3", O_CREAT | O_EXCL, 0644, 1)
+
+        IF semFull == NULL OR semEmpty == NULL OR sem3 == NULL THEN
+            PRINT "Erro no criar/abrir semaforo"
+            EXIT -1
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            pidList[i] = fork()
+            IF pidList[i] < 0 THEN
+                PRINT "Erro ao criar o processo"
+                EXIT -1
+            ELSE IF pidList[i] == 0 THEN
+                DO
+                    WAIT(semEmpty)
+                    WAIT(sem3)
+
+                    IF shared_data -> elementsNum < LIMIT THEN
+                        shared_data -> elementsNum++
+                        shared_data -> buffer[shared_data -> index] = shared_data -> elementsNum
+                        shared_data -> index++
+
+                        IF shared_data -> index == BUFFER_SIZE THEN
+                            shared_data -> index = 0
+                        END
+
+                        PRINT "Processo " + (i + 1) + " produziu nº " + shared_data -> elementsNum
+                    END
+
+                    SIGNAL(sem3)
+                    SIGNAL(semFull)
+                    SLEEP 1
+                WHILE shared_data -> elementsNum < LIMIT
+
+                IF munmap(shared_data, DATA_SIZE) < 0 THEN
+                    PRINT "Erro ao remover mapping"
+                    EXIT -1
+                END
+
+                IF close(fd) < 0 THEN
+                    PRINT "Erro ao fechar file descriptor"
+                    EXIT -1
+                END
+
+                EXIT 0
+            END
+        END
+
+        read = 0
+        FOR i = 0 TO LIMIT - 1 DO
+            WAIT(semFull)
+            WAIT(sem3)
+
+            PRINT "Número consumido: " + shared_data -> buffer[read]
+            
+            read++
+            IF read == BUFFER_SIZE THEN
+                read = 0
+            END
+
+            SIGNAL(sem3)
+            SIGNAL(semEmpty)
+            SLEEP(2)
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            waitpid(pidList[i], &status, 0)
+        END
+
+        IF CLOSE_SEMAPHORE(semFull) < 0 OR CLOSE_SEMAPHORE(semEmpty) < 0 OR CLOSE_SEMAPHORE(sem3) < 0 THEN
+            PRINT "Erro ao fechar semaforo\n"
+            EXIT -1
+        END
+
+        IF REMOVE_SEMAPHORE("semaFull") < 0 OR REMOVE_SEMAPHORE("semaEmpty") < 0 OR REMOVE_SEMAPHORE("sema3") < 0 THEN
+            PRINT "Erro ao fechar semaforo\n"
+            EXIT -1
+        END
+
+        IF munmap(shared_data, DATA_SIZE) < 0 THEN
+            PRINT "Erro ao remover mapping"
+            EXIT -1
+        END
+
+        IF close(fd) < 0 THEN
+            PRINT "Erro ao fechar file descriptor"
+            EXIT -1
+        END
+
+        IF shm_unlink(FILE_NAME) < 0 THEN
+            PRINT "Erro ao remover o Ficheiro!"
+            EXIT -1
+        END
+        RETURN 0
+    END
+END

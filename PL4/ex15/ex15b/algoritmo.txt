@@ -1,0 +1,84 @@
+BEGIN
+    DEFINE main()
+        DEFINE fd, status, i
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE semClub, semVip, semSpecial, semNormal
+
+        fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR)
+        IF fd < 0 THEN
+            PRINT "Erro ao criar memoria partilhada"
+            EXIT -1
+        END
+
+        IF ftruncate(fd, DATA_SIZE) < 0 THEN
+            PRINT "Erro ao alocar espaco na memoria"
+            EXIT -1
+        END
+
+        bar *shared_data = (bar*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+        shared_data -> vipNum = 0
+        shared_data -> specialNum = 0
+        shared_data -> normalNum = 0
+
+        semClub = FULL_CAPACITY
+        semVip = 0
+        semSpecial = 0
+        semNormal = 0
+        
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            pidList[i] = fork()
+            IF pidList[i] < 0 THEN
+                PRINT "Erro ao criar o processo"
+                EXIT -1
+            ELSE IF pidList[i] == 0 THEN
+                time_t t
+                char client[10]
+                srand(time(&t) * getpid())
+                INT type = (rand() % 3) + 1
+
+                IF type == 1 THEN
+                    strcpy(client, "Vip")
+                    shared_data -> vipNum++
+                    WAIT semVip
+                ELSE IF type == 2 THEN
+                    strcpy(client, "Especial")
+                    shared_data -> specialNum++
+                    WAIT semSpecial
+                ELSE
+                    strcpy(client, "Normal")
+                    shared_data -> normalNum++
+                    WAIT semNormal
+                END
+
+                WAIT semClub
+                PRINT "Cliente " + (i + 1) + " [" + client + "] entrou no clube"
+                FLUSH(stdout)
+                INT time = (rand() % 7) + 5
+                SLEEP time 
+                SIGNAL semClub
+                PRINT "Cliente " + (i + 1) + " [" + client + "] saiu do clube (permaneceu la " + time + " segundos)"
+                FLUSH(stdout)
+
+                EXIT 0
+            END
+        END
+
+        SLEEP 2
+        FOR i = 0 TO shared_data -> vipNum - 1 DO
+            SIGNAL semVip
+        END
+        SLEEP 1
+        FOR i = 0 TO shared_data -> specialNum - 1 DO
+            SIGNAL semSpecial
+        END
+        SLEEP 1
+        FOR i = 0 TO shared_data -> normalNum - 1 DO
+            SIGNAL semNormal
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            waitpid(pidList[i], &status, 0)
+        END
+       RETURN 0
+    END
+END

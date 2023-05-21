@@ -1,15 +1,17 @@
 BEGIN
-    DEFINE NUMBER_OF_CHILDREN 2
+    DEFINE NUMBER_OF_CHILDREN as 2
+
     DEFINE main()
+
         DEFINE status, i
         DEFINE pidList[NUMBER_OF_CHILDREN]
         DEFINE semName[50]
         DEFINE sem[NUMBER_OF_CHILDREN]
 
         FOR i = 0 TO NUMBER_OF_CHILDREN
-            snprintf(semName, sizeof(semName), "sema%d", i)
+            SNPRINTF semName, sizeof(semName), "sema%d", i
             sem[i] = sem_open(semName, O_CREAT | O_EXCL, 0644, 0)
-            IF sem[i] == SEM_FAILED
+            IF sem[i] == SEM_FAILED THEN
                 PRINT "Error creating/opening semaphore"
                 EXIT -1
             END
@@ -17,15 +19,16 @@ BEGIN
 
         FOR i = 0 TO NUMBER_OF_CHILDREN
             pidList[i] = fork()
-            IF pidList[i] < 0
+
+            IF pidList[i] < 0 THEN
                 PRINT "Error creating process"
                 EXIT -1
-            ELSE IF pidList[i] == 0
-                IF i == 0
+            ELSE IF pidList[i] == 0 THEN
+                IF i == 0 THEN
                     PRINT "1st child"
-                    sem_post(sem[0])
+                    SIGNAL sem[0]
                 ELSE
-                    sem_wait(sem[1])
+                    WAIT sem[1]
                     PRINT "2nd child"
                 END
 
@@ -33,21 +36,22 @@ BEGIN
             END
         END
 
-        sem_wait(sem[0])
+        WAIT sem[0]
         PRINT "Father"
-        sem_post(sem[1])
+        SIGNAL sem[1]
 
         FOR i = 0 TO NUMBER_OF_CHILDREN
             waitpid(pidList[i], &status, 0)
         END
 
         FOR i = 0 TO NUMBER_OF_CHILDREN
-            IF sem_close(sem[i]) < 0
+            IF sem_close(sem[i]) < 0 THEN
                 PRINT "Error closing semaphore"
                 EXIT -1
             END
-            snprintf(semName, sizeof(semName), "sema%d", i)
-            IF sem_unlink(semName) < 0
+
+            SNPRINTF semName, sizeof(semName), "sema%d", i
+            IF sem_unlink(semName) < 0 THEN
                 PRINT "Error unlinking semaphore"
                 EXIT -1
             END

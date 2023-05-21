@@ -1,0 +1,83 @@
+BEGIN
+    DEFINE main()
+        DEFINE status, i
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE fd
+        DEFINE semCostumer, semSeller
+
+        fd = shm_open(FILE_NAME, O_CREAT|O_RDWR, S_IRUSR|S_IWUSR)
+        IF fd < 0 THEN
+            PRINT "Erro ao criar memoria partilhada"
+            EXIT -1
+        END
+
+        sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+
+        semCostumer = sem_open("semaCostumer", O_CREAT)
+        semSeller = sem_open("semaSeller", O_CREAT)
+
+        IF semCostumer == SEM_FAILED OR semSeller == SEM_FAILED THEN
+            PRINT "Erro no criar/abrir semaforo"
+            EXIT -1
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            pidList[i] = fork()
+            IF pidList[i] < 0 THEN
+                PRINT "Erro ao criar o processo"
+                EXIT -1
+            ELSE IF pidList[i] == 0 THEN
+
+                WAIT(semCostumer)
+                PRINT "Cliente " + (i + 1) + " obteve o bilhete nº " + shared_data -> ticket
+                PRINT shared_data -> ticketsNum + " bilhetes restantes"
+                PRINT "-----------------------------------------"
+
+                SIGNAL(semSeller)
+
+                IF munmap(shared_data, DATA_SIZE) < 0 THEN
+                    PRINT "Erro ao remover mapping"
+                    EXIT -1
+                END
+
+                IF close(fd) < 0 THEN
+                    PRINT "Erro ao fechar file descriptor"
+                    EXIT -1
+                END
+
+                EXIT 0
+            END
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            waitpid(pidList[i], &status, 0)
+        END
+
+        IF sem_close(semCostumer) < 0 OR sem_close(semSeller) < 0 THEN
+            PRINT "Erro ao fechar semaforo\n"
+            EXIT -1
+        END
+
+        IF sem_unlink("semaCostumer") < 0 OR sem_unlink("semaSeller") < 0 THEN
+            PRINT "Erro ao fechar semaforo\n"
+            EXIT -1
+        END
+
+        IF munmap(shared_data, DATA_SIZE) < 0 THEN
+            PRINT "Erro ao remover mapping"
+            EXIT -1
+        END
+
+        IF close(fd) < 0 THEN
+            PRINT "Erro ao fechar file descriptor"
+            EXIT -1
+        END
+
+        IF shm_unlink(FILE_NAME) < 0 THEN
+            PRINT "Erro ao remover o Ficheiro!"
+            EXIT -1
+        END
+
+        RETURN 0
+    END
+END

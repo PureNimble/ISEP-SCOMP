@@ -1,0 +1,47 @@
+BEGIN
+    DEFINE main(argc, argv)
+        IF argc != 3 THEN
+            PRINT "Erro: Número de argumentos inválido!"
+            EXIT -1
+        END
+        
+        NUMBER_OF_CHILDREN = atoi(argv[1])
+        time = atoi(argv[2])
+
+        IF time < 100 OR time > 1000000 THEN
+            PRINT "Erro: Tempo deve estar entre 100 us e 1s."
+            EXIT -1
+        END
+
+        DEFINE status, i, seconds, ns, us
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE start, end of type struct timespec
+
+        clock_gettime(CLOCK_REALTIME, &start)
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            pidList[i] = fork()
+
+            IF pidList[i] < 0 THEN
+                PRINT "Erro ao criar o processo"
+                EXIT -1
+            ELSE IF pidList[i] == 0 THEN
+                usleep(time)
+                exit(0)
+            END
+        END
+        
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            waitpid(pidList[i], &status, 0)
+        END
+
+        clock_gettime(CLOCK_REALTIME, &end)
+        seconds = end.tv_sec - start.tv_sec
+        ns = end.tv_nsec - start.tv_nsec
+        us = seconds * 1000000 + ns / 1000
+
+        PRINT "Tempo de processamento: " + us + " us"
+
+        RETURN 0
+    END
+END

@@ -1,0 +1,50 @@
+BEGIN
+    DEFINE main()
+        DEFINE status, i
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE sem
+
+        sem = sem_open("sema", O_CREAT | O_EXCL, 0644, FULL_CAPACITY)
+        IF sem == SEM_FAILED THEN
+            PRINT "Erro no criar/abrir semaforo"
+            EXIT -1
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            pidList[i] = fork()
+            IF pidList[i] < 0 THEN
+                PRINT "Erro ao criar o processo"
+                EXIT -1
+            ELSE IF pidList[i] == 0 THEN
+                time_t t
+                srand(time(&t) * getpid())
+
+                WAIT(sem)
+                PRINT "Cliente " + (i + 1) + " entrou no clube"
+                FLUSH(stdout)
+                INT time = (rand() % 7) + 5
+                SLEEP time
+                SIGNAL(sem)
+                PRINT "Cliente " + (i + 1) + " saiu do clube"
+                FLUSH(stdout)
+
+                EXIT 0
+            END
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            waitpid(pidList[i], &status, 0)
+        END
+
+        IF sem_close(sem) < 0 THEN
+            PRINT "Erro ao fechar semaforo"
+            EXIT -1
+        END
+        IF sem_unlink("sema") < 0 THEN
+            PRINT "Erro ao fechar semaforo"
+            EXIT -1
+        END
+        RETURN 0
+    END
+END
+

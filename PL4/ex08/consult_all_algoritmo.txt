@@ -1,0 +1,88 @@
+BEGIN
+    DEFINE main()
+
+        DEFINE i, opt, max
+
+        fd = shm_open(FILE_NAME, O_CREAT|O_RDWR, S_IRUSR|S_IWUSR)
+        IF fd < 0 THEN
+            PRINT "Error creating shared memory"
+            EXIT -1
+        END
+        
+        sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+
+        sem1 = sem_open("sem1", O_CREAT)
+        sem2 = sem_open("sem2", O_CREAT)
+        sem3 = sem_open("sem3", O_CREAT)
+        semRead = sem_open("semaRead", O_CREAT)
+        semWrite = sem_open("semaWrite", O_CREAT)
+
+        IF sem1 == SEM_FAILED OR sem2 == SEM_FAILED OR sem3 == SEM_FAILED OR semRead == SEM_FAILED OR semWrite == SEM_FAILED THEN
+            PRINT "Error creating/opening semaphore"
+            EXIT -1
+        END
+        
+        DO
+            WAIT sem3
+            WAIT semRead
+            WAIT sem1
+            shared_data -> readCount++
+            IF shared_data -> readCount == 1 THEN
+                WAIT semWrite
+            END
+            SIGNAL sem1
+            SIGNAL semRead
+            SIGNAL sem3
+            
+            PRINT "A procurar clientes no sistema..."
+            SLEEP 2 seconds
+            max = shared_data -> index
+            FOR i = 0 TO max-1 DO
+                PRINT client information from shared_data
+            END
+
+            WAIT sem1
+            shared_data -> readCount--
+            IF shared_data -> readCount == 0 THEN
+                SIGNAL semWrite
+            END
+            SIGNAL sem1
+            
+            DO
+                PRINT "Deseja rever a lista de clientes?\n");
+                READ opt
+            WHILE opt < 0 OR opt > 1
+            
+        WHILE opt is equal to 1
+
+        shared_data -> run--
+
+        IF shared_data -> run == 0 THEN
+            IF sem_close(sem1) < 0 OR sem_close(sem2) < 0 OR sem_close(sem3) < 0 OR sem_close(semRead) < 0 OR sem_close(semWrite) < 0 THEN
+                PRINT "Error closing semaphore"
+                EXIT -1
+            END
+
+            IF munmap(shared_data, DATA_SIZE) < 0 THEN
+                PRINT "Error removing mapping"
+                EXIT -1
+            END
+
+            IF close(fd) < 0 THEN
+                PRINT "Error closing file descriptor"
+                EXIT -1
+            END
+            IF sem_unlink("sem1") < 0 OR sem_unlink("sem2") < 0 OR sem_unlink("sem3") < 0 OR sem_unlink("semaRead") < 0 OR sem_unlink("semaWrite") < 0 THEN
+                PRINT "Error unlinking semaphore"
+                EXIT -1
+            END
+
+            IF shm_unlink(FILE_NAME) < 0 THEN
+                PRINT "Error removing the file"
+                EXIT -1
+            END
+        END
+
+        RETURN 0
+    END
+END

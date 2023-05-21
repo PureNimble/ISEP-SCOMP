@@ -1,0 +1,172 @@
+BEGIN
+    DEFINE main()
+        DEFINE fd, status, i
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE t
+        DEFINE semTrain, semDoor[NUMBER_OF_DOORS], semSafe
+
+        fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR)
+        IF fd < 0
+            PRINT "Erro ao criar memoria partilhada"
+            EXIT -1
+        END
+
+        IF ftruncate(fd, DATA_SIZE) < 0
+            PRINT "Erro ao alocar espaço na memória"
+            EXIT -1
+        END
+
+        train *shared_data = (train*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+        shared_data -> stationA = 0
+        shared_data -> stationB = 0
+        shared_data -> stationC = 0
+
+        semTrain = sem_open("semaTrain", O_CREAT /*| O_EXCL*/, 0644, 20)
+        semSafe = sem_open("semaSafe", O_CREAT /*| O_EXCL*/, 0644, 1)
+        semDoor[0] = sem_open("semaDoor1", O_CREAT /*| O_EXCL*/, 0644, 1)
+        semDoor[1] = sem_open("semaDoor2", O_CREAT /*| O_EXCL*/, 0644, 1)
+        semDoor[2] = sem_open("semaDoor3", O_CREAT /*| O_EXCL*/, 0644, 1)
+
+        IF semTrain == SEM_FAILED OR semDoor[0] == SEM_FAILED OR semDoor[1] == SEM_FAILED OR semDoor[2] == SEM_FAILED OR semSafe == SEM_FAILED
+            PRINT "Erro no criar/abrir semaforo"
+            EXIT -1
+        END
+
+        PRINT "Metro parte em direção á estação A com os passageiros..."
+        FLUSH stdout
+        SLEEP 5
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            pidList[i] = fork()
+            IF pidList[i] < 0
+                PRINT "Erro ao criar o processo"
+                EXIT -1
+            ELSE IF pidList[i] == 0
+                srand((unsigned)time(&t) * getpid())
+                DEFINE entered, door
+
+                WAIT(semSafe)
+                IF shared_data -> stationA < 15
+                    WAIT(semTrain)
+                    shared_data -> stationA++
+                    PRINT "Passageiro " + (i + 1) + " chega á estação A"
+                    FLUSH stdout
+                    entered = 1
+                END
+                SIGNAL(semSafe)
+
+                SLEEP 1
+
+                IF entered == 1
+                    WAIT(semSafe)
+                    IF shared_data -> stationA > 10
+                        shared_data -> stationA--
+                        WAIT(semDoor[door])
+                        PRINT "Passageiro " + (i + 1) + " sai na estação A pela porta " + (door + 1)
+                        FLUSH stdout
+                        usleep(200000)
+                        SIGNAL(semDoor[door])
+                        SIGNAL(semTrain)
+                        SIGNAL(semSafe)
+                        EXIT 0
+                    END
+                    SIGNAL(semSafe)
+                ELSE
+                    PRINT "Passageiro " + (i + 1) + " á espera na estação A"
+                    FLUSH stdout
+                    WAIT(semSafe)
+                    IF shared_data -> stationB < 10
+                        shared_data -> stationB++
+                        WAIT(semDoor[door])
+                        PRINT "Passageiro " + (i + 1) + " entra no metro na estação A pela porta " + (door + 1)
+                        FLUSH stdout
+                        usleep(200000)
+                        SIGNAL(semDoor[door])
+                        WAIT(semTrain)
+                        entered = 1
+                    END
+                    SIGNAL(semSafe)
+                END
+
+                SLEEP 2
+
+                PRINT "Passageiro " + (i + 1) + " parte em direção á estação B"
+                FLUSH stdout
+                SLEEP 5
+
+                IF entered == 1
+                    WAIT(semSafe)
+                    IF shared_data -> stationB > 0
+                        shared_data -> stationB--
+                        WAIT(semDoor[door])
+                        PRINT "Passageiro " + (i + 1) + " sai na estação B pela porta " + (door + 1)
+                        FLUSH stdout
+                        usleep(200000)
+                        SIGNAL(semDoor[door])
+                        SIGNAL(semTrain)
+                        SIGNAL(semSafe)
+                        EXIT 0
+                    END
+                    SIGNAL(semSafe)
+                ELSE
+                    PRINT "Passageiro " + (i + 1) + " á espera na estação B"
+                    FLUSH stdout
+                    WAIT(semSafe)
+                    IF shared_data -> stationC < 5
+                        shared_data -> stationC++
+                        WAIT(semDoor[door])
+                        PRINT "Passageiro " + (i + 1) + " entra no metro na estação B pela porta " + (door + 1)
+                        FLUSH stdout
+                        usleep(200000)
+                        SIGNAL(semDoor[door])
+                        WAIT(semTrain)
+                    END
+                    SIGNAL(semSafe)
+                END
+
+                IF munmap(shared_data, DATA_SIZE) < 0
+                    PRINT "Erro ao remover mapping"
+                    EXIT -1
+                END
+
+                IF close(fd) < 0
+                    PRINT "Erro ao fechar file descriptor"
+                    EXIT -1
+                END
+
+                EXIT 0
+            END
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            waitpid(pidList[i], &status, 0)
+        END
+
+        IF sem_close(semTrain) < 0 OR sem_close(semSafe) < 0 OR sem_close(semDoor[0]) < 0 OR sem_close(semDoor[1]) < 0 OR sem_close(semDoor[2]) < 0
+            PRINT "Erro ao fechar semaforo\n"
+            EXIT -1
+        END
+
+        IF sem_unlink("semaTrain") < 0 OR sem_unlink("semaSafe") < 0 OR sem_unlink("semaDoor1") < 0 OR sem_unlink("semaDoor2") < 0 OR sem_unlink("semaDoor3") < 0
+            PRINT "Erro ao fechar semaforo\n"
+            EXIT -1
+        END
+
+        IF munmap(shared_data, DATA_SIZE) < 0
+            PRINT "Erro ao remover mapping"
+            EXIT -1
+        END
+
+        IF close(fd) < 0
+            PRINT "Erro ao fechar file descriptor"
+            EXIT -1
+        END
+
+        IF shm_unlink(FILE_NAME) < 0
+            PRINT "Erro ao remover o Ficheiro!"
+            EXIT -1
+        END
+
+        RETURN 0
+    END
+END

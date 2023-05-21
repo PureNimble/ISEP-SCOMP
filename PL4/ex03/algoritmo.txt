@@ -1,133 +1,131 @@
-typedef struct {
-    int indice;
-    char strings[50][80];
-} sharedStrings;
+BEGIN
+    typedef struct {
+        int indice;
+        char strings[50][80];
+    } sharedStrings;
 
-DEFINE DATA_SIZE sizeof(sharedStrings)
-DEFINE FILE_NAME "/shmEx03"
-DEFINE NUMBER_OF_CHILDREN 10
-DEFINE STRING_LIMIT 50
+    DEFINE DATA_SIZE sizeof(sharedStrings)
+    DEFINE FILE_NAME "/shmEx03"
+    DEFINE NUMBER_OF_CHILDREN as 10
+    DEFINE STRING_LIMIT as 50
 
-DEFINE main()
-    DEFINE fd, status, i
-    DEFINE pidList[NUMBER_OF_CHILDREN]
-    DEFINE t
-    DEFINE sem
+    DEFINE main()
 
-    fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR)
+        DEFINE fd, status, i
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE t
+        DEFINE sem
 
-    IF fd < 0
-        PRINT "Error creating shared memory"
-        EXIT -1
-    END
-
-    IF ftruncate(fd, DATA_SIZE) < 0
-        PRINT "Error allocating space in memory"
-        EXIT -1
-    END
-
-    sharedStrings *shared_data = (sharedStrings*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
-    shared_data -> indice = 0
-
-    sem = sem_open("sem", O_CREAT | O_EXCL, 0644, 1)
-
-    IF sem == SEM_FAILED
-        PRINT "Error creating semaphore"
-        EXIT -1
-    END
-
-    FOR i = 0 TO NUMBER_OF_CHILDREN
-        pidList[i] = fork()
-
-        IF pidList[i] < 0
-            PRINT "Error creating process"
+        fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR)
+        IF fd < 0 THEN
+            PRINT "Error creating shared memory"
             EXIT -1
-        ELSE IF pidList[i] == 0
-            DEFINE randomNum, optProb, optUser = 2
-            DEFINE pid = getpid()
-            struct timespec waitTime
-
-            clock_gettime(CLOCK_REALTIME, &waitTime)
-            waitTime.tv_sec += 12
-
-            srand ((unsigned) time(&t) * pid)
-
-            WHILE shared_data -> indice < STRING_LIMIT
-                IF shared_data -> indice > 0
-                    optProb = (rand() % 100) + 1
-
-                    IF optProb < 30
-                        optUser = 1
-                        /*do{
-                            printf("\nDeseja remover o conteudo da linha anterior?\n");
-                            printf("--------Option--------\n1 - Sim\n0 - Não\n----------------------\n");
-                            scanf("%d", &optUser);
-                        }while(optUser < 0 || optUser > 1);*/
-                    END
-                END
-
-                IF sem_timedwait(sem, &waitTime) == 0
-                    IF optUser == 1
-                        shared_data -> indice--
-                        sprintf(shared_data -> strings[shared_data->indice], " ")
-                        PRINT "String erased from shared memory"
-                    ELSE
-                        sprintf(shared_data -> strings[shared_data->indice], "I'm the Father - with PID %d", pid)
-                        PRINT "String written in shared memory: " + shared_data->strings[shared_data -> indice]
-                        shared_data -> indice++
-                    END
-                ELSE
-                    PRINT "Error!!! \"Timeout\""
-                END
-
-                optUser = 2
-                randomNum = (rand() % 5) + 1
-                sem_post(sem)
-                sleep(randomNum)
-            END
-
-            IF munmap(shared_data, DATA_SIZE) < 0
-                PRINT "Error removing mapping"
-                EXIT -1
-            END
-
-            IF close(fd) < 0
-                PRINT "Error closing file descriptor"
-                EXIT -1
-            END
-
-            EXIT 0
         END
-    END
 
-    FOR i = 0 TO NUMBER_OF_CHILDREN
-        waitpid(pidList[i], &status, 0)
-    END
+        IF ftruncate(fd, DATA_SIZE) < 0 THEN
+            PRINT "Error allocating space in memory"
+            EXIT -1
+        END
+        
+        DEFINE shared_data as sharedStrings pointer
+        shared_data = mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+        shared_data->indice = 0
 
-    IF sem_close(sem) < 0
-        PRINT "Error closing semaphore"
-        EXIT -1
-    END
+        sem = sem_open("sem", O_CREAT | O_EXCL, 0644, 1)
+        IF sem == SEM_FAILED THEN
+            PRINT "Error creating semaphore"
+            EXIT -1
+        END
 
-    IF sem_unlink("sem") < 0
-        PRINT "Error unlinking semaphore"
-        EXIT -1
-    END
+        FOR i = 0 TO NUMBER_OF_CHILDREN
+            pidList[i] = fork()
 
-    IF munmap(shared_data, DATA_SIZE) < 0
-        PRINT "Error removing mapping"
-        EXIT -1
-    END
+            IF pidList[i] < 0 THEN
+                PRINT "Error creating process"
+                EXIT -1
+            ELSE IF pidList[i] == 0 THEN
+                DEFINE randomNum as Integer
+                DEFINE optProb as Integer
+                DEFINE optUser as Integer
+                DEFINE pid as getpid()
+                DEFINE waitTime as timespec
 
-    IF close(fd) < 0
-        PRINT "Error closing file descriptor"
-        EXIT -1
-    END
+                clock_gettime(CLOCK_REALTIME, &waitTime)
+                waitTime.tv_sec += 12
 
-    IF shm_unlink(FILE_NAME) < 0
-        PRINT "Error removing the file!"
-        EXIT -1
-    END
+                srand ((unsigned) time(&t) * pid)
 
-    RETURN 0
+                WHILE shared_data->indice < STRING_LIMIT DO
+                    IF shared_data->indice > 0 THEN
+                        optProb = (rand() % 100) + 1
+                        IF optProb < 30 THEN
+                            optUser = 1
+                        END
+                    END
+
+                    IF sem_timedwait(sem, &waitTime) == 0 THEN
+                        IF optUser == 1 THEN
+                            shared_data->indice = shared_data->indice - 1
+                            sprintf(shared_data->strings[shared_data->indice], " ")
+                            PRINT "String removed from shared memory"
+                        ELSE
+                            sprintf(shared_data->strings[shared_data->indice], "I'm the Father - with PID %d", pid)
+                            PRINT "String written in shared memory: " + shared_data->strings[shared_data->indice]
+                            shared_data->indice = shared_data->indice + 1
+                        END
+                    ELSE
+                        PRINT "Error!!! 'Timeout'"
+                    END
+
+                    optUser = 2
+                    randomNum = (rand() % 5) + 1
+                    sem_post(sem)
+                    SLEEP randomNum
+                END
+
+                IF munmap(shared_data, DATA_SIZE) < 0 THEN
+                    PRINT "Error removing mapping"
+                    EXIT -1
+                END
+
+                IF close(fd) < 0 THEN
+                    PRINT "Error closing file descriptor"
+                    EXIT -1
+                END
+
+                EXIT 0
+            END
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN DO
+            waitpid(pidList[i], &status, 0)
+        END
+
+        IF sem_close(sem) < 0 THEN
+            PRINT "Error closing semaphore"
+            EXIT -1
+        END
+
+        IF sem_unlink("sem") < 0 THEN
+            PRINT "Error unlinking semaphore"
+            EXIT -1
+        END
+
+        IF munmap(shared_data, DATA_SIZE) < 0 THEN
+            PRINT "Error removing mapping"
+            EXIT -1
+        END
+
+        IF close(fd) < 0 THEN
+            PRINT "Error closing file descriptor"
+            EXIT -1
+        END
+
+        IF shm_unlink(FILE_NAME) < 0 THEN
+            PRINT "Error removing the file!"
+            EXIT -1
+        END
+
+        RETURN 0
+    END
 END

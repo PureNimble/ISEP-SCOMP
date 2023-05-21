@@ -1,0 +1,86 @@
+BEGIN
+    DEFINE main()
+        DEFINE i, status
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+
+        fd = shm_open(FILE_NAME, O_CREAT|O_RDWR, S_IRUSR|S_IWUSR)
+        IF fd < 0 THEN
+            PRINT "Erro ao criar memoria partilhada"
+            EXIT -1
+        END
+
+        sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+
+        semWriter = sem_open("semaWriter", O_CREAT)
+        semReader = sem_open("semaReader", O_CREAT)
+        sem1 = sem_open("sema1", O_CREAT)
+        sem2 = sem_open("sema2", O_CREAT)
+        sem3 = sem_open("sema3", O_CREAT)
+
+        IF semWriter == SEM_FAILED OR semReader == SEM_FAILED OR sem1 == SEM_FAILED OR sem2 == SEM_FAILED OR sem3 == SEM_FAILED THEN
+            PRINT "Erro no criar/abrir semaforo"
+            EXIT -1
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            pidList[i] = fork()
+            IF pidList[i] < 0 THEN
+                PRINT "Erro ao criar o processo"
+                EXIT -1
+            ELSE IF pidList[i] == 0 THEN
+                sleep(1)
+                WAIT(sem3)
+                WAIT(semReader)
+                WAIT(sem1)
+
+                shared_data -> readCount++
+                IF shared_data -> readCount == 1 THEN
+                    WAIT(semWriter)
+                END
+
+                SIGNAL(sem1)
+                SIGNAL(semReader)
+                SIGNAL(sem3)
+
+                PRINT "Reader: Número de leitores: " + shared_data -> readCount
+                FLUSH(stdout)
+                PRINT "Leitor leu: pid[" + shared_data -> pid + "] escrito ás " + shared_data -> currentTime
+                FLUSH(stdout)
+
+                WAIT(sem1)
+                shared_data -> readCount--
+                IF shared_data -> readCount == 0 THEN
+                    SIGNAL(semWriter)
+                END
+                SIGNAL(sem1)
+
+                EXIT 0
+            END
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            waitpid(pidList[i], &status, 0)
+        END
+
+        IF sem_close(semWriter) < 0 OR sem_close(semReader) < 0 OR sem_close(sem1) < 0 OR sem_close(sem2) < 0 OR sem_close(sem3) < 0 THEN
+            PRINT "Erro ao fechar semaforo\n"
+            EXIT -1
+        END
+
+        IF munmap(shared_data, DATA_SIZE) < 0 THEN
+            PRINT "Erro ao remover mapping"
+            EXIT -1
+        END
+
+        IF close(fd) < 0 THEN
+            PRINT "Erro ao fechar file descriptor"
+            EXIT -1
+        END
+
+        IF shm_unlink(FILE_NAME) < 0 THEN
+            PRINT "Erro ao remover o Ficheiro!"
+            EXIT -1
+        END
+        RETURN 0
+    END
+END

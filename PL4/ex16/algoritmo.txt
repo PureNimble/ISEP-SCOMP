@@ -1,0 +1,130 @@
+BEGIN
+    DEFINE main()
+        DEFINE fd, status, i
+        DEFINE t
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE semMem, semBar
+
+        fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR)
+        IF fd < 0 THEN
+            PRINT "Erro ao criar memoria partilhada"
+            EXIT -1
+        END
+
+        IF ftruncate(fd, DATA_SIZE) < 0 THEN
+            PRINT "Erro ao alocar espaco na memoria"
+            EXIT -1
+        END
+
+        sharedValues *shared_data = (sharedValues*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+        shared_data -> barrier = 0
+
+        srand(time(&t))
+
+        FOR i = 0 TO INITIAL_SIZE - 1 DO
+            shared_data -> initialVec[i] = (rand() % 10000) + 1
+        END
+
+        semMem = 1
+        semBar = 0
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            pidList[i] = fork()
+            IF pidList[i] < 0 THEN
+                PRINT "Erro ao criar o processo"
+                EXIT -1
+            ELSE IF pidList[i] == 0 AND i != 5 THEN
+                INT j, k, sum, start, end, index
+                start = i * (INITIAL_SIZE / 5)
+                end = (i + 1) * (INITIAL_SIZE / 5) - 1
+
+                FOR j = start TO end - 1 DO
+                    sum = 0
+                    index = j + AVERAGE_NUM
+                    FOR k = j TO index - 1 DO
+                        sum += shared_data -> initialVec[k]
+                    END
+                    shared_data -> finalVec[j / AVERAGE_NUM] = sum / AVERAGE_NUM
+                END
+
+                WAIT semMem
+                shared_data -> barrier++
+                SIGNAL semMem
+                IF shared_data -> barrier == NUMBER_OF_CHILDREN THEN
+                    SIGNAL semBar
+                END
+                WAIT semBar
+                SIGNAL semBar
+
+                IF munmap(shared_data, DATA_SIZE) < 0 THEN
+                    PRINT "Erro ao remover mapping"
+                    EXIT -1
+                END
+
+                IF close(fd) < 0 THEN
+                    PRINT "Erro ao fechar file descriptor"
+                    EXIT -1
+                END
+
+                EXIT 0
+            ELSE IF pidList[i] == 0 THEN
+                INT max = 0, j
+                WAIT semMem
+                shared_data -> barrier++
+                SIGNAL semMem
+                IF shared_data -> barrier == NUMBER_OF_CHILDREN THEN
+                    SIGNAL semBar
+                END
+                WAIT semBar
+                SIGNAL semBar
+
+                FOR j = 0 TO FINAL_SIZE - 1 DO
+                    IF shared_data -> finalVec[j] > max THEN
+                        max = shared_data -> finalVec[j]
+                        PRINT "Atencao!! novo valor mais alto encontrado: " + max
+                        FLUSH(stdout)
+                    END
+                END
+                shared_data -> largeNum = max
+
+                EXIT 0
+            END
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            waitpid(pidList[i], &status, 0)
+        END
+
+        FOR i = 0 TO FINAL_SIZE - 1 DO
+            PRINT "vec[" + i + "]: " + shared_data -> finalVec[i]
+            FLUSH(stdout)
+        END
+        PRINT "Maior numero encontrado: " + shared_data -> largeNum
+
+        IF close(semMem) < 0 OR close(semBar) < 0 THEN
+            PRINT "Erro ao fechar semaforo"
+            EXIT -1
+        END
+
+        IF unlink("semaMemory") < 0 OR unlink("semaBarrier") < 0 THEN
+            PRINT "Erro ao fechar semaforo"
+            EXIT -1
+        END
+
+        IF munmap(shared_data, DATA_SIZE) < 0 THEN
+            PRINT "Erro ao remover mapping"
+            EXIT -1
+        END
+
+        IF close(fd) < 0 THEN
+            PRINT "Erro ao fechar file descriptor"
+            EXIT -1
+        END
+
+        IF shm_unlink(FILE_NAME) < 0 THEN
+            PRINT "Erro ao remover o Ficheiro!"
+            EXIT -1
+        END
+        RETURN 0
+    END
+END

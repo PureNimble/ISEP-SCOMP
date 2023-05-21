@@ -1,0 +1,115 @@
+BEGIN
+    DEFINE main()
+        DEFINE fd, status, i
+        DEFINE t
+        DEFINE pidList[NUMBER_OF_CHILDREN]
+        DEFINE semRead, semWrite
+
+        fd = shm_open(FILE_NAME, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR)
+        IF fd < 0 THEN
+            PRINT "Erro ao criar memoria partilhada"
+            EXIT -1
+        END
+
+        IF ftruncate(fd, DATA_SIZE) < 0 THEN
+            PRINT "Erro ao alocar espaco na memoria"
+            EXIT -1
+        END
+
+        sensors *shared_data = (sensors*) mmap(NULL, DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)
+        shared_data -> alarm = 0
+
+        semRead = 0
+        semWrite = 1
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            pidList[i] = fork()
+            IF pidList[i] < 0 THEN
+                PRINT "Erro ao criar o processo"
+                EXIT -1
+            ELSE IF pidList[i] == 0 THEN
+                INT reading, j
+                srand(time(&t) * getpid())
+
+                FOR j = 0 TO READINGS - 1 DO
+                    reading = rand() % 101
+                    WAIT semWrite
+                    PRINT "Sensor " + (i + 1) + " a ler..."
+                    FLUSH(stdout)
+                    shared_data -> indice = j
+                    shared_data -> sensorNum = i
+                    shared_data -> sensors[i][j] = reading
+                    IF reading > 50 THEN
+                        IF shared_data -> sensors[i][6] != 1 THEN
+                            shared_data -> alarm++
+                            shared_data -> sensors[i][6] = 1
+                        END
+                    ELSE IF reading <= 50 AND j != 1 THEN
+                        IF shared_data -> sensors[i][j-1] < 50 AND shared_data -> sensors[i][6] != 0 THEN
+                            shared_data -> alarm--
+                            shared_data -> sensors[i][6] = 0
+                        END
+                    END
+                    SIGNAL semRead
+                    SLEEP 1
+                END
+
+                IF munmap(shared_data, DATA_SIZE) < 0 THEN
+                    PRINT "Erro ao remover mapping"
+                    EXIT -1
+                END
+
+                IF close(fd) < 0 THEN
+                    PRINT "Erro ao fechar file descriptor"
+                    EXIT -1
+                END
+
+                EXIT 0
+            END
+        END
+
+        INT alarmStorage = 0
+        FOR i = 0 TO TOTAL_READ - 1 DO
+            WAIT semRead
+            PRINT "A " + (shared_data -> indice + 1) + " leitura do sensor " + (shared_data -> sensorNum + 1) + " foi " + shared_data -> sensors[shared_data -> sensorNum][shared_data -> indice]
+            FLUSH(stdout)
+            IF alarmStorage != shared_data -> alarm THEN
+                alarmStorage = shared_data -> alarm
+                PRINT "Atencao!! O numero de alarmes mudou para " + shared_data -> alarm
+                FLUSH(stdout)
+            END
+            SIGNAL semWrite
+        END
+
+        FOR i = 0 TO NUMBER_OF_CHILDREN - 1 DO
+            waitpid(pidList[i], &status, 0)
+        END
+
+        IF close(semRead) < 0 OR close(semWrite) < 0 THEN
+            PRINT "Erro ao fechar semaforo"
+            EXIT -1
+        END
+
+        IF unlink("semaRead") < 0 OR unlink("semaWrite") < 0 THEN
+            PRINT "Erro ao fechar semaforo"
+            EXIT -1
+        END
+
+        IF munmap(shared_data, DATA_SIZE) < 0 THEN
+            PRINT "Erro ao remover mapping"
+            EXIT -1
+        END
+
+        IF close(fd) < 0 THEN
+            PRINT "Erro ao fechar file descriptor"
+            EXIT -1
+        END
+
+        IF shm_unlink(FILE_NAME) < 0 THEN
+            PRINT "Erro ao remover o Ficheiro!"
+            EXIT -1
+        END
+
+        RETURN 0
+    END
+END

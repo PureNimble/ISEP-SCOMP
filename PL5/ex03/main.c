@@ -7,29 +7,22 @@
 #define NUMBER_OF_THREADS 10
 #define ARRAY_SIZE 1000
 
-typedef struct data {
-    int randomNum;
-    int searchArray[ARRAY_SIZE];
-} data;
-
-typedef struct indexes {
-    data* dataPtr;
-    int index;
-} indexes;
+int randomNum;
+int searchArray[ARRAY_SIZE];
 
 typedef struct {
     int idx;
 } winner;
 
 void* threadFunc(void* arg) {
-    indexes* dataPoint = (indexes*) arg;
-    int i, start = dataPoint -> index * 100, end = start + 100, id = dataPoint -> index + 1, search = dataPoint -> dataPtr -> randomNum;
+    int id = *((int*) arg), i, start = id * 100, end = start + 100;
+    id++;
 
     for (i = start; i < end; i++) {
-        if (dataPoint -> dataPtr -> searchArray[i] == search) {
+        if (searchArray[i] == randomNum) {
             winner* winnersPoint = (winner*) malloc(sizeof(winner));
             winnersPoint -> idx = id;
-            printf("Thread(%d) ID: %lu encontrou o valor %d na posição %d\n", id, pthread_self(), search, i);
+            printf("Thread(%d) ID: %lu encontrou o valor %d na posição %d\n", id, pthread_self(), randomNum, i);
             pthread_exit((void*) winnersPoint);
         }
     }
@@ -38,26 +31,23 @@ void* threadFunc(void* arg) {
 }
 
 int main(void) {
-    int i, finalWinner;
+    int i, finalWinner, index[NUMBER_OF_THREADS];
     pthread_t threads[NUMBER_OF_THREADS];
     time_t t;
     void* ret;
-    data searchData;
-    indexes searchDataIndex[NUMBER_OF_THREADS];
 
     srand((unsigned)time(&t));
 
-    searchData.randomNum = (rand() % ARRAY_SIZE) + 1;
+    randomNum = (rand() % ARRAY_SIZE) + 1;
 
     for (i = 0; i < ARRAY_SIZE; i++) {
-        searchData.searchArray[i] = i + 1;
+        searchArray[i] = i + 1;
     }
 
     for (i = 0; i < NUMBER_OF_THREADS; i++) {
-        searchDataIndex[i].dataPtr = &searchData;
-        searchDataIndex[i].index = i;
-
-        if (pthread_create(&threads[i], NULL, threadFunc, (void*) &searchDataIndex[i]) != 0) {
+        
+        index[i] = i;
+        if (pthread_create(&threads[i], NULL, threadFunc, (void*) &index[i]) != 0) {
             perror("Erro ao criar thread");
             exit(-1);
         }

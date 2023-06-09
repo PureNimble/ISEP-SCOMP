@@ -8,23 +8,14 @@
 #define MULT_THREADS 8
 #define DIMENTIONS 8
 
-typedef struct data {
-    int matrix1[DIMENTIONS][DIMENTIONS];
-    int matrix2[DIMENTIONS][DIMENTIONS];
-} data;
-
-typedef struct indexes {
-    data* dataPtr;
-    int index;
-} indexes;
-
+int matrix1[DIMENTIONS][DIMENTIONS];
+int matrix2[DIMENTIONS][DIMENTIONS];
 int result[DIMENTIONS][DIMENTIONS];
 pthread_mutex_t mutex;
 
 void* fillMatrix(void* arg) {
 
-    int (*matrix)[DIMENTIONS] = (int (*)[DIMENTIONS]) arg;
-    int i, j;
+    int (*matrix)[DIMENTIONS] = (int (*)[DIMENTIONS]) arg, i, j;
     time_t t;
 
     printf("Thread [%lu] a preencher a matriz...\n", pthread_self());
@@ -43,8 +34,7 @@ void* fillMatrix(void* arg) {
 
 void* multMatrix(void *arg) {
 
-    indexes* matrixes = (indexes*) arg;
-    int i, j, k, line = matrixes -> index;
+    int line = *((int*) arg), i, j, k;
 
     printf("Thread(%d) ID: %lu a multiplicar as matrizes...\n", line + 1, pthread_self());
 
@@ -52,7 +42,7 @@ void* multMatrix(void *arg) {
         for (j = 0; j < DIMENTIONS; j++) {
             for (k = 0; k < DIMENTIONS; k++) {
                 pthread_mutex_lock(&mutex);
-                result[i][j] += matrixes -> dataPtr -> matrix1[i][k] * matrixes -> dataPtr -> matrix2[k][j];
+                result[i][j] += matrix1[i][k] * matrix2[k][j];
                 pthread_mutex_unlock(&mutex);
             }
         }
@@ -63,18 +53,15 @@ void* multMatrix(void *arg) {
 
 int main(void){
     
-    int i, j;
+    int i, j, index[MULT_THREADS];
     pthread_t fillThreads[FILL_THREADS], multThreads[MULT_THREADS];
 
-    data fillData;
-    indexes searchDataIndex[MULT_THREADS];
-
-    if (pthread_create(&fillThreads[0], NULL, fillMatrix, (void*) &fillData.matrix1) != 0) {
+    if (pthread_create(&fillThreads[0], NULL, fillMatrix, (void*) &matrix1) != 0) {
         perror("Erro ao criar thread");
         exit(-1);
     }
 
-    if (pthread_create(&fillThreads[1], NULL, fillMatrix, (void*) &fillData.matrix2) != 0) {
+    if (pthread_create(&fillThreads[1], NULL, fillMatrix, (void*) &matrix2) != 0) {
         perror("Erro ao criar thread");
         exit(-1);
     }
@@ -93,9 +80,8 @@ int main(void){
     }
 
     for (i = 0; i < MULT_THREADS; i++) {
-        searchDataIndex[i].dataPtr = &fillData;
-        searchDataIndex[i].index = i;
-        if (pthread_create(&multThreads[i], NULL, multMatrix, (void*) &searchDataIndex[i]) != 0) {
+        index[i] = i;
+        if (pthread_create(&multThreads[i], NULL, multMatrix, (void*) &index[i]) != 0) {
             perror("Erro ao criar thread");
             exit(-1);
         }

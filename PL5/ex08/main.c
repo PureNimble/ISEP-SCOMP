@@ -7,58 +7,85 @@
 #define NUMBER_OF_THREADS 5
 #define ARRAY_SIZE 1000
 
-typedef struct sharedData {
-    int data[ARRAY_SIZE];
-    int results[ARRAY_SIZE];
-} sharedData;
-
-typedef struct indexes {
-    sharedData* dataPtr;
-    int index;
-} indexes;
+int data[ARRAY_SIZE];
+int results[ARRAY_SIZE];
+int counter = 0, turn = 0;
 
 pthread_mutex_t mutex;
+pthread_cond_t cond;
+pthread_cond_t cond_printer[NUMBER_OF_THREADS];
 
 void* calcFunc(void *arg) {
 
-    indexes* values = (indexes*) arg;
-    int i, result, id = values -> index, start = id * 500, end = start + 500, keyIndex;
+    int id = *((int*) arg), i, start = id * 200, end = start + 200;
 
     printf("Thread(%d) ID: %lu em execução...\n", id + 1, pthread_self());
 
     for (i = start; i < end; i++) {
-        values -> dataPtr -> results[i] = values -> dataPtr -> data[i] * 10 + 2;
+        results[i] = data[i] * 10 + 2;
     }
+
+    printf("Thread(%d) ID: %lu terminou os calculos!\n", id + 1, pthread_self());
+
+    pthread_mutex_lock(&mutex);
+    counter++;
+    if (counter < NUMBER_OF_THREADS) {
+        pthread_cond_wait(&cond, &mutex);
+    }
+    pthread_cond_broadcast(&cond);
+    pthread_mutex_unlock(&mutex);
+
+    pthread_mutex_lock(&mutex);
+    if (id != turn) {
+        pthread_cond_wait(&cond_printer[id], &mutex);
+    }
+
+    printf("\nThread(%d) ID: %lu [%d - %d]\n", id + 1, pthread_self(), start, end - 1);
+    for (i = start; i < end; i++) {
+        printf("%d: %d\n", i, results[i]);
+        fflush(stdout);
+    }
+
+    turn++;
+    pthread_cond_broadcast(&cond_printer[id + 1]);
+    pthread_mutex_unlock(&mutex);
 
     pthread_exit(NULL);
 }
 
 int main(void){
     
-    int i, j;
+    int i, index[NUMBER_OF_THREADS];
     time_t t;
     pthread_t threads[NUMBER_OF_THREADS];
-
-    sharedData calcData;
-    indexes searchDataIndex[NUMBER_OF_THREADS];
 
     srand((unsigned)time(&t));
 
     for (i = 0; i < ARRAY_SIZE; i++) {
-        calcData.data[i][j] = (rand() % 1000) + 1;
+        data[i] = (rand() % ARRAY_SIZE) + 1;
     }
 
-    for (i = 0; i < NUMBER_OF_NUMBERS; i++) {
-        if (pthread_mutex_init(&mutex[i], NULL) != 0) {
-            perror("Erro ao criar mutex");
-            exit(-1);
-        }
+    if (pthread_mutex_init(&mutex, NULL) != 0) {
+        perror("Erro ao criar mutex");
+        exit(-1);
+    }
+
+    if (pthread_cond_init(&cond, NULL) != 0) {
+        perror("Erro ao criar variavel condicional");
+        exit(-1);
     }
 
     for (i = 0; i < NUMBER_OF_THREADS; i++) {
-        searchDataIndex[i].dataPtr = &calcData;
-        searchDataIndex[i].index = i;
-        if (pthread_create(&threads[i], NULL, calcFunc, (void*) &searchDataIndex[i]) != 0) {
+        if (pthread_cond_init(&cond_printer[i], NULL) != 0) {
+            perror("Erro ao criar variavel condicional");
+            exit(-1);
+        }
+    }
+    
+
+    for (i = 0; i < NUMBER_OF_THREADS; i++) {
+        index[i] = i;
+        if (pthread_create(&threads[i], NULL, calcFunc, (void*) &index[i]) != 0) {
             perror("Erro ao criar thread");
             exit(-1);
         }
@@ -72,15 +99,11 @@ int main(void){
         }
     }
 
-    for (i = 0; i < NUMBER_OF_NUMBERS; i++) {
-        pthread_mutex_destroy(&mutex[i]);
+    for (i = 0; i < NUMBER_OF_THREADS; i++) {
+        pthread_cond_destroy(&cond_printer[i]);
     }
-
-    printf("Fim de todas as execuções!\n");
-    printf("Estatísticas:\nN | Número de aparições\n");
-    for (i = 0; i < NUMBER_OF_NUMBERS; i++) {
-        printf("%d - %d\n", i + 1, searchData.results[i]);
-    }
+    pthread_cond_destroy(&cond);
+    pthread_mutex_destroy(&mutex);
 
     return 0;
 }

@@ -13,7 +13,7 @@ int counter = 0, turn = 0;
 
 pthread_mutex_t mutex;
 pthread_cond_t cond;
-pthread_cond_t cond_printer[NUMBER_OF_THREADS];
+pthread_cond_t condPrinter[NUMBER_OF_THREADS];
 
 void* calcFunc(void *arg) {
 
@@ -29,15 +29,15 @@ void* calcFunc(void *arg) {
 
     pthread_mutex_lock(&mutex);
     counter++;
-    if (counter < NUMBER_OF_THREADS) {
+    while (counter < NUMBER_OF_THREADS) {
         pthread_cond_wait(&cond, &mutex);
     }
     pthread_cond_broadcast(&cond);
     pthread_mutex_unlock(&mutex);
 
     pthread_mutex_lock(&mutex);
-    if (id != turn) {
-        pthread_cond_wait(&cond_printer[id], &mutex);
+    while (id != turn) {
+        pthread_cond_wait(&condPrinter[id], &mutex);
     }
 
     printf("\nThread(%d) ID: %lu [%d - %d]\n", id + 1, pthread_self(), start, end - 1);
@@ -47,7 +47,7 @@ void* calcFunc(void *arg) {
     }
 
     turn++;
-    pthread_cond_broadcast(&cond_printer[id + 1]);
+    pthread_cond_signal(&condPrinter[id + 1]);
     pthread_mutex_unlock(&mutex);
 
     pthread_exit(NULL);
@@ -76,7 +76,7 @@ int main(void){
     }
 
     for (i = 0; i < NUMBER_OF_THREADS; i++) {
-        if (pthread_cond_init(&cond_printer[i], NULL) != 0) {
+        if (pthread_cond_init(&condPrinter[i], NULL) != 0) {
             perror("Erro ao criar variavel condicional");
             exit(-1);
         }
@@ -100,7 +100,7 @@ int main(void){
     }
 
     for (i = 0; i < NUMBER_OF_THREADS; i++) {
-        pthread_cond_destroy(&cond_printer[i]);
+        pthread_cond_destroy(&condPrinter[i]);
     }
     pthread_cond_destroy(&cond);
     pthread_mutex_destroy(&mutex);

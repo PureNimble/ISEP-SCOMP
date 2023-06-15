@@ -122,7 +122,7 @@ void* positive(void *arg) {
         if (processedInc < ARRAY_SIZE) {
             pos++;
             processedInc++;
-            printf("Thread(%d) recebeu uma nota positiva %d!\n", id + 1, processedInc);
+            printf("Thread(%d) recebeu uma nota positiva!\n", id + 1);
             fflush(stdout);
         }
         pthread_mutex_unlock(&mutexFinalGrades);
@@ -150,7 +150,7 @@ void* negative(void *arg) {
         if (processedInc < ARRAY_SIZE) {
             neg++;
             processedInc++;
-            printf("Thread(%d) recebeu uma nota negativa %d!\n", id + 1, processedInc);
+            printf("Thread(%d) recebeu uma nota negativa!\n", id + 1);
             fflush(stdout);
         }
         pthread_mutex_unlock(&mutexFinalGrades);
@@ -229,8 +229,8 @@ int main(void){
 
     double posPercentage = (double) pos / 300 * 100;
     double negPercentage = (double) neg / 300 * 100;
-    printf("Nº de notas positivas: %d, Percentagem: %.2f%%\n", pos, posPercentage);
-    printf("Nº de notas negativas: %d, Percentagem: %.2f%%\n", neg, negPercentage);
+    printf("Nº de notas positivas: %d, Percentagem: %.0f%%\n", pos, posPercentage);
+    printf("Nº de notas negativas: %d, Percentagem: %.0f%%\n", neg, negPercentage);
 
     return 0;
 }

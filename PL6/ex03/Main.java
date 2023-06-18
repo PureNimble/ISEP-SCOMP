@@ -7,10 +7,8 @@ public class Main {
     static final Thread[] transfers = new Transfer[TRANSFERS];
 
     public static void main(String[] args) throws InterruptedException {
-        //Creates a shared Bank
         Bank bank = new Bank(ACCOUNTS);
 
-        //Initializes RequestTransfer threads with random values
         for(int i = 0; i < TRANSFERS; i++) {
             Account fromAccount = bank.getAccount(new Random().nextInt(ACCOUNTS) + 1);
             Account toAccount = bank.getAccount(new Random().nextInt(ACCOUNTS) + 1);
@@ -21,11 +19,23 @@ public class Main {
             transfers[i].start();
         }
 
-        //Waits for active threads
         for(Thread transfer: transfers) {
             transfer.join();
         }
 
-        System.out.println("Finished all transfers. Shutting down...");
+        System.out.println("Terminaram todas as transferências.");
     }
 }
+
+
+
+/*
+ * 
+ *      3) Question: In your solution, can a deadlock occur? If yes, can you solve it by reordering
+ *                   the statements?
+ * 
+ *         Answer: No, because in our solution there are no explicit locks or synchronized blocks being used. 
+ *                 Each thread acquires the semaphore permit before executing its critical section and releases 
+ *                 it afterward, ensuring exclusive access to the account.
+ * 
+ */

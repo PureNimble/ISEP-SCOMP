@@ -13,14 +13,14 @@ public class EurosAmount{
 
     public void subtract(EurosAmount amount) {
         if (this.amount - amount.amount < 0)
-            throw new UnsupportedOperationException("Insufficient balance!");
+            throw new UnsupportedOperationException("Dinheiro insuficiente!");
 
         this.amount -= amount.amount;
     }
 
     @Override
     public String toString() {
-        return String.format("%.2f€", amount);
+        return String.format("%.2f euros", amount);
     }
 
     public int compareTo(double amount) {

@@ -9,10 +9,9 @@ public class Bank {
     private List<Account> accounts = new ArrayList<>();
 
     public Bank(int numAccounts) {
-        //Initializes bank by creating N accounts with sequential numbers
         for(int i = 1; i <= numAccounts; i++)
             accounts.add(new Account(i));
-        System.out.println("Added " + numAccounts + " accounts to bank");
+        System.out.println("Adicionou " + numAccounts + " contas ao banco");
     }
 
     public Account getAccount(int accountNo) {
@@ -24,19 +23,16 @@ public class Bank {
     }
 
     public boolean transferMoney(Account fromAcct,Account toAcct, EurosAmount amount) throws InterruptedException {
-        //Validate accounts
         if(fromAcct.accountNumber == toAcct.accountNumber) {
-            System.out.println("Cannot transfer between the same account!");
+            System.out.println("Não é possível fazer uma transferência para a mesma conta!");
             return false;
         }
 
-        //Validate transfer amount
         if(amount.compareTo(TRANSFER_LOWER_LIMIT) < 0 || amount.compareTo(TRANSFER_UPPER_LIMIT) > 0) {
-            System.out.println("Invalid transfer amount!");
+            System.out.println("Montante inválido!");
             return false;
         }
-
-        //Validate resulting balance in fromAcct
+        
         if (fromAcct.withdraw(amount))
             return toAcct.deposit(amount);
 

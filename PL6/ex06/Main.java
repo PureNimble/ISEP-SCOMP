@@ -12,6 +12,7 @@ public class Main {
 
     public static void main(String[] args) throws ExecutionException, InterruptedException {
 
+        int globalSum = 0;
         int[] array = new int[ARRAY_SIZE];
         initializeArray(array);
 
@@ -31,15 +32,18 @@ public class Main {
 
         System.out.printf("Somas Parciais = [");
         for(Future<Integer> sum: sums) {
+            globalSum += sum.get();
             System.out.printf("%d; ", sum.get());
         }
         System.out.printf("]\n");
+        System.out.printf("Soma Global: " + globalSum + "\n");
 
         System.exit(0);
     }
 
     private static void initializeArray(int[] array) {
-        for(int i = 0; i < array.length; i++)
+        for(int i = 0; i < array.length; i++) {
             array[i] = (new Random()).nextInt(100);
+        }
     }
 }

@@ -20,10 +20,10 @@ public class Transfer extends Thread {
     public void run() {
         try {
             sleep(new Random().nextInt(5000));
-            System.out.println("A iniciar transferência " + getId() + " da conta " + from.accountNumber + " para a conta " + to.accountNumber + " no valor de " + amount + "euros");
+            System.out.println("A iniciar transferência " + getId() + " da conta " + from.accountNumber + " para a conta " + to.accountNumber + " no valor de " + amount);
 
             if (bank.transferMoney(from, to, amount))
-                System.out.printf("Transferência %d aceite\n", getId());
+                System.out.printf("Transferência %d concluida com sucesso\n", getId());
             else
                 System.out.printf("Transferência %d recusada\n", getId());
         } catch (InterruptedException e) {

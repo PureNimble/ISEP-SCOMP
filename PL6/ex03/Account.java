@@ -21,12 +21,12 @@ public class Account {
             balance.subtract(amount);
         } catch (UnsupportedOperationException e) {
             semaphore.release();
-            System.out.println(e.getMessage() + " Dinheiro disponível: " + balance + "    Montante da operação: " + amount + "euros");
+            System.out.println(e.getMessage() + " Dinheiro disponível: " + balance + " Montante da operação: " + amount);
             return false;
         }
         semaphore.release();
 
-        System.out.printf("Tirou %s euros da conta %d. Dinheiro disponível: %s euros\n", amount, accountNumber, balance);
+        System.out.printf("Tirou %s da conta %d. Dinheiro disponível: %s euros\n", amount, accountNumber, balance);
         return true;
     }
 
@@ -35,7 +35,7 @@ public class Account {
         balance.add(amount);
         semaphore.release();
 
-        System.out.printf("Depositou %s euros na conta %d. Dinheiro disponível: %s euros\n", amount, accountNumber, balance);
+        System.out.printf("Depositou %s na conta %d. Dinheiro disponível: %s euros\n", amount, accountNumber, balance);
         return true;
     }
 }

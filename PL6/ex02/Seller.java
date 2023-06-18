@@ -1,25 +1,22 @@
 package PL6.ex02;
 
 public class Seller extends Thread {
-    private TicketStorage storage;
+    private TicketStorage tickets;
 
-    public Seller(TicketStorage storage) {
-        this.storage = storage;
+    Seller(TicketStorage tickets) {
+        this.tickets = tickets;
     }
 
     @Override
     public void run() {
-        while(!Thread.interrupted()) {
+        while (!Thread.interrupted()) {
             try {
-                Ticket ticket = storage.sellTicket();
-                System.out.printf("Vendedor nº %d vendeu %s\n", this.getId(), ticket);
-
                 sleep(2000);
+                tickets.ticketSelling(this.getId());
             } catch (InterruptedException e) {
                 System.out.println("Processo Seller a terminar...");
                 return;
             }
         }
-        return;
     }
 }

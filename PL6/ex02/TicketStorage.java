@@ -1,34 +1,34 @@
 package PL6.ex02;
 
-import java.util.LinkedList;
 import java.util.concurrent.Semaphore;
 
-public class TicketStorage extends Thread {
+public class TicketStorage {
 
-    private LinkedList<Ticket> tickets = new LinkedList<>();
-    private Semaphore semaphore;
+    private int tickets;
+    private int remainingTickets;
+    private static Semaphore semaphore = new Semaphore(1);
 
-    public TicketStorage(int ticket) {
-        
-        for(int i = 0; i < ticket; i--) tickets.add(new Ticket(i));
-        System.out.println("Existem " + ticket + " bilhetes disponiveis para venda!");
-        
-        semaphore = new Semaphore(1);
+    public TicketStorage(int tickets) {
+        this.tickets = tickets;
+        this.remainingTickets = tickets;
     }
 
-    public Ticket sellTicket() throws InterruptedException {
-        if(hasTickets()) {
-            //semaphore.release();
-            Main.interruptAll();
+    public void ticketSelling(long id) {
+        try {
+            semaphore.acquire();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            System.out.println("Processo Seller a terminar...");
+            return;
         }
-
-        semaphore.acquire();
-        Ticket ticket =  tickets.poll();
+        if (tickets > 0) {
+            tickets--;
+            System.out.printf("Vendedor nº %d vendeu bilhete número %d\n", id, remainingTickets - tickets);
+        }
         semaphore.release();
-        return ticket;
     }
 
-    public boolean hasTickets() {
-        return tickets.isEmpty();
+    public int getRemainingTickets() {
+        return tickets;
     }
 }

@@ -34,8 +34,8 @@ public class Main {
  *      3) Question: In your solution, can a deadlock occur? If yes, can you solve it by reordering
  *                   the statements?
  * 
- *         Answer: No, because in our solution there are no explicit locks or synchronized blocks being used. 
- *                 Each thread acquires the semaphore permit before executing its critical section and releases 
- *                 it afterward, ensuring exclusive access to the account.
+ *         Answer: Não, porque na nossa solução não existem locks ou métodos sincronizados a serem utilizados. 
+ *                 Cada thread adquire a permissão do semáforo antes de executar a sua secção crítica e a liberta posteriormente, 
+ *                 garantindo acesso exclusivo à conta.
  * 
  */
